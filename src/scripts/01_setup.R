@@ -90,8 +90,47 @@ table(is.na(entry_data_df$Comment))
 clean_data_df <- entry_data_df |>
   rename_all(tolower) |>
   rename_all(~ str_replace_all(., "\\.", "_")) |>
-  select(-comment)
-
+  select(-comment) |> 
+  mutate(
+    theatre = factor(theatre),
+    case_type = factor(case_type),
+    specialty = factor(specialty),
+    surgery_status = factor(surgery_status),
+    surgery_start_date = as.Date(surgery_start_date, '%d.%m.%Y'),
+    anaesthetic_start = format(strptime(anaesthetic_start, '%H:%M:%S'), '%H:%M:%S'),
+    surgery_start = format(strptime(surgery_start, '%H:%M:%S'), '%H:%M:%S'),
+    surgery_finish = format(strptime(surgery_finish, '%H:%M:%S'), '%H:%M:%S'),
+    anaesthetic_finish = format(strptime(anaesthetic_finish, '%H:%M:%S'), '%H:%M:%S'),
+    left_theatre = format(strptime(left_theatre, '%H:%M:%S'), '%H:%M:%S'),
+    surgery_end_date = as.Date(surgery_end_date, '%d.%m.%Y')) |> 
+  select(
+    -surgery_start,
+    -surgery_finish,
+    -left_theatre
+  )
+ 
 View(clean_data_df)
+
+
+
+
+# Summary Dashboard - Tier 3 --------------------------------------
+
+summary_df <- clean_data_df |> 
+  summarize(
+    min_date = min(surgery_start_date),
+    max_date = max(surgery_start_date),
+    start_date = min_date - as.integer( format(min_date, '%w') ),
+    end_date = max_date - as.integer( format(max_date, '%w') ) + 6,
+    weeks_between = as.integer((end_date - start_date + 1) / 7),
+    start_week = 1,
+    end_week = start_week + weeks_between - 1,
+    num_theatres = nlevels(theatre),
+    num_specialties = nlevels(specialty)
+  ) |> 
+  select(start_week, end_week, everything(), -min_date, -max_date)
+
+summary_df
+
 
 
