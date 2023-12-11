@@ -35,7 +35,7 @@ to_unix_timestamp <- function(
     optional = TRUE) {
   
   as.POSIXct(
-    gsub(" ", "", string_time), 
+    gsub(' ', '', string_time), 
     tz = tz, 
     format = format,
     optional = optional)
@@ -109,14 +109,20 @@ theatre_adhocs_df <- mng_theatres_df[6:8, c(13:14, 17:19)] |>
 
     open = strftime(open, '%H:%M'),
     close = strftime(close, '%H:%M') ) |> 
-  merge(theatre_core_time_df, by.y = "weekday") |> 
+  merge(theatre_core_time_df, by.y = 'weekday') |> 
   mutate(
     lost_time_m = ifelse(
       core_time_m - adhoc_time_m > 0,
       core_time_m - adhoc_time_m, 0 ),
+  
     lost_time_h = ifelse(
       core_time_h - adhoc_time_h > 0,
-      core_time_h - adhoc_time_h, 0 ) ) |> 
+      core_time_h - adhoc_time_h, 0 ),
+    
+    open = to_unix_timestamp(open),
+    close = to_unix_timestamp(close)
+  ) |> 
+  
   select(
     -adhoc_time_m,
     -adhoc_time_h,
@@ -157,68 +163,161 @@ clean_data_df <- entry_data_df |>
     -x_1
   )
  
-View(clean_data_df)
+# View(clean_data_df)
 
 
 
 
 # Prepare Data ------------------------------------------------------------
 
+adhocs_for_merge_df <- theatre_adhocs_df |> 
+  select(
+    -theatre_open,
+    -theatre_close
+  ) |> 
+  
+  mutate(
+    surgery_start_date = date,
+    theatre = theatre_id,
+    theatre_open = open,
+    theatre_close = close,
+    core_time_m = as.integer(
+      difftime(theatre_close, theatre_open, units = 'mins')
+    ),
+    core_time_h = as.integer(
+      difftime(theatre_close, theatre_open, units = 'hours')
+    )
+  ) |> 
+  
+  select(
+    surgery_start_date,
+    theatre,
+    theatre_open,
+    theatre_close,
+    core_time_m,
+    core_time_h
+  )
+
 prepared_df <- clean_data_df |> 
   mutate(
+    surgery_status = str_trim( str_to_lower(surgery_status) ),
+    
     weekday = format(surgery_start_date, '%a'),
+    
     anaesthetic_finish = case_when(
       anaesthetic_finish >= anaesthetic_start ~ anaesthetic_finish,
       TRUE ~ anaesthetic_finish + dhours(24)),
+    
     duration = difftime(
       anaesthetic_finish, 
       anaesthetic_start, 
       units = 'mins'),
+    
     week = cut(
       surgery_start_date, 
-      breaks = "week", 
-      labels = FALSE)) |> 
-  merge(theatre_core_time_df, by.y = "weekday") |> 
+      breaks = 'week', 
+      labels = FALSE),
+    
+    ) |> 
+  
+  merge(theatre_core_time_df, by.y = 'weekday') |> 
+  left_join(
+    adhocs_for_merge_df, 
+    by = c('surgery_start_date', 'theatre'),
+    suffix = c('_entry', '_adhoc')
+    ) |> 
+  
+  mutate(
+    theatre_open = coalesce(theatre_open_adhoc, theatre_open_entry),
+    theatre_close = coalesce(theatre_close_adhoc, theatre_close_entry),
+    core_time_m = coalesce(core_time_m_adhoc, core_time_m_entry),
+    core_time_h = coalesce(core_time_h_adhoc, core_time_h_entry)
+  ) |> 
+  
+  select(
+    -ends_with("_entry"), 
+    -ends_with("_adhoc")
+  ) |> 
+
   mutate(
     early_start = case_when(
-      anaesthetic_start >= theatre_open ~ NA,
+      anaesthetic_start >= theatre_open ~ difftime(theatre_open, 
+                                                   theatre_open, 
+                                                   units = 'mins'),
       TRUE ~ difftime(theatre_open, anaesthetic_start, units = 'mins')
     ),
+    
     over_run = case_when(
-      anaesthetic_start > theatre_close ~ NA,
-      theatre_close >= anaesthetic_finish ~ NA,
+      anaesthetic_start > theatre_close ~ difftime(theatre_open, 
+                                                   theatre_open, 
+                                                   units = 'mins'),
+      theatre_close >= anaesthetic_finish ~ difftime(theatre_open, 
+                                                     theatre_open, 
+                                                     units = 'mins'),
       TRUE ~ difftime(anaesthetic_finish, theatre_close, units = 'mins')
     ),
+    
     non_core = case_when(
       anaesthetic_finish <= theatre_open ~ duration,
       anaesthetic_start >= theatre_close ~ duration,
-      TRUE ~ NA
+      TRUE ~ difftime(theatre_open, 
+                      theatre_open, 
+                      units = 'mins'),
     ),
-    core_time = case_when(
+    
+    incore_time = case_when(
       ( anaesthetic_start < theatre_open & 
         anaesthetic_finish > theatre_open &
         anaesthetic_finish <= theatre_close ) ~ 
           difftime(anaesthetic_finish, 
                    theatre_open, 
                    units = 'mins'),
+      
       ( anaesthetic_start >= theatre_open & 
         anaesthetic_finish <= theatre_close ) ~ 
           duration,
+      
       ( anaesthetic_start >= theatre_open &
         anaesthetic_start < theatre_close &
         anaesthetic_finish > theatre_close ) ~ 
           difftime(theatre_close, 
                    anaesthetic_start, 
                    units = 'mins'),
+      
       ( anaesthetic_start <= theatre_open & 
         anaesthetic_finish >= theatre_close ) ~ 
           difftime(theatre_close, 
                    theatre_open, 
                    units = 'mins'),
-      TRUE ~ NA
-    )
+      
+      TRUE ~ difftime(theatre_open, 
+                      theatre_open, 
+                      units = 'mins'),
+    ),
+    
+    is_incore_case = (
+      (anaesthetic_start >= theatre_open & anaesthetic_start < theatre_close) |
+      (anaesthetic_finish > theatre_open & anaesthetic_finish <= theatre_close)
+    ),
+    
+    is_outcore_case = (
+      anaesthetic_finish < theatre_open | anaesthetic_start > theatre_close
+    ),
+    
+    is_cancalled_case = (surgery_status == 'case cancelled'),
+    
+    outcore_time = (case_when(
+      is_outcore_case ~ duration,
+      is_incore_case ~ early_start + over_run,
+      TRUE ~ duration - duration
+    ) )
   )
-View(prepared_df)
+
+# View(prepared_df)
+# View(filter(prepared_df, theatre == 'C', surgery_start_date == '2020-3-23'))
+# View(filter(prepared_df, theatre == 'R', surgery_start_date == '2020-03-12'))
+# View(filter(prepared_df, theatre == 'C', surgery_start_date == '2020-03-25'))
+
 
 
 
@@ -309,7 +408,7 @@ summary_df <- clean_data_df |>
   rename(c1 = V1, c2=V2)
 
 summary_df
-View(summary_df)
+# View(summary_df)
 
 
 
@@ -329,16 +428,20 @@ on_time_start_df <- prepared_df |>
     late_start = case_when(
       first_surgery_start + duration > theatre_open ~
         difftime(first_surgery_start, theatre_open, units = 'mins'),
-      TRUE ~ NA),
+      TRUE ~ difftime(theatre_open, theatre_open, units = 'mins')
+    ),
     
     on_time = late_start <= 0 ) |> 
   
   # Grouping by weeks and theatres:
   group_by(week, theatre) |>
   reframe(
-    minutes_lost = sum(late_start[ which(late_start > 0) ]),
+    minutes_lost = sum(
+      late_start[ which(late_start > 0) ], 
+      rm.na = TRUE
+    ),
     early_start = sum(early_start, rm.na = TRUE),
-    days_on_time = sum(on_time) / 5
+    days_on_time = sum(on_time, rm.na = TRUE) / 5
   ) |> 
   filter(theatre == 'I')
   
@@ -353,17 +456,17 @@ on_time_start_p <- ggplot(
     aes(x = factor(week)) ) +
   
   geom_bar(
-    aes(y = minutes_lost, fill = "Mins lost"), 
-    stat = "identity", 
+    aes(y = minutes_lost, fill = 'Mins lost'), 
+    stat = 'identity', 
     alpha = 0.7,
-    position = "identity") +
+    position = 'identity') +
   
   geom_line(
-    aes(y = days_on_time * 600, color = "% Days on-time start"), 
+    aes(y = days_on_time * 600, color = '% Days on-time start'), 
     group = 1) +
   
   geom_point(
-    aes(y = days_on_time * 600, color = "% Days on-time start"), 
+    aes(y = days_on_time * 600, color = '% Days on-time start'), 
     shape = 15, 
     size = 3,
     alpha = 0.7) +  # Add square points
@@ -373,44 +476,44 @@ on_time_start_p <- ggplot(
         label = scales::percent(days_on_time, scale = 100)), 
     vjust = -1,
     hjust = 0.4,
-    color = "black",
-    label.padding = unit(0.2, "lines")) +  # Add labels on top of the line
+    color = 'black',
+    label.padding = unit(0.2, 'lines')) +  # Add labels on top of the line
   
   scale_y_continuous(
     sec.axis = sec_axis(
       ~./600, 
-      name = "Days On-Time Start (%)",
+      name = 'Days On-Time Start (%)',
       breaks = seq(0, 1, by = 0.2),
       labels = scales::percent_format(scale = 100)),
     
-    name = "Minutes Lost due to Late Start",
+    name = 'Minutes Lost due to Late Start',
     breaks = seq(0, 600, by = 100),
     limits = c(0, 600)
   ) +
   
   scale_x_discrete(
-    labels = paste0("Wk ", on_time_start_df$week)) +
+    labels = paste0('Wk ', on_time_start_df$week)) +
   
   scale_fill_manual( 
     name = '', 
-    values = c("Mins lost" = "#faab36",
-               "Mins early" = '#fd5901') ) +
+    values = c('Mins lost' = '#faab36',
+               'Mins early' = '#fd5901') ) +
   
   scale_color_manual( 
     name = '', 
-    values = c("% Days on-time start" = "#249ea0") ) +
+    values = c('% Days on-time start' = '#249ea0') ) +
   
   labs(
-    title = "On Time Start (AM)", 
-    x = "Weeks", 
-    y = "Minutes Lost due to Late Start",
-    fill = "Time" ) +
+    title = 'On Time Start (AM)', 
+    x = 'Weeks', 
+    y = 'Minutes Lost due to Late Start',
+    fill = 'Time' ) +
   
   theme_minimal() +
   theme(
     panel.grid.major.x = element_blank(),  # Remove y-axis grid lines
-    legend.position = "bottom",
-    legend.direction = "horizontal" )
+    legend.position = 'bottom',
+    legend.direction = 'horizontal' )
 
 on_time_start_p
 
@@ -461,33 +564,35 @@ inter_op_interval_p <- ggplot(
   aes(x = factor(surgery_start_date)) ) +
   
   geom_bar(
-    aes(y = total_lost, fill = "Mins lost due turnover"), 
-    stat = "identity", 
+    aes(y = total_lost, fill = 'Mins lost due turnover'), 
+    stat = 'identity', 
     alpha = 0.7,
-    position = "identity") +
+    position = 'identity') +
   
   geom_bar(
-    aes(y = total_overlap, fill = "Mins saved due overlap"), 
-    stat = "identity", 
+    aes(y = total_overlap, fill = 'Mins saved due overlap'), 
+    stat = 'identity', 
     alpha = 0.7,
-    position = "identity") +
+    position = 'identity') +
   
-  geom_line(
-    aes(y = trend, color = "Trend"), 
-    group = 1) +
+  # geom_line(
+  #   aes(y = trend, color = 'Trend'),
+  #   group = 1,
+  #   # linejoin = 'round',
+  #   linetype = 'dashed') +
   
-  # geom_point(
-  #   aes(y = trend, color = "Trend"), 
-  #   shape = 15, 
-  #   size = 3,
-  #   alpha = 0.7) +
+  geom_point(
+    aes(y = trend, color = 'Trend'),
+    shape = 4,
+    size = 3,
+    alpha = 0.7) +
   
   geom_text(
     aes(
       y = max(total_overlap), 
-      label = -total_lost),
+      label = total_lost),
     position = position_stack(vjust = 2),
-    fontface = "bold",
+    fontface = 'bold',
     size = 3) +
   
   geom_text(
@@ -495,31 +600,31 @@ inter_op_interval_p <- ggplot(
       y = max(total_overlap), 
       label = total_overlap),
     position = position_stack(vjust = 2.3),
-    fontface = "bold",
+    fontface = 'bold',
     size = 3) +
 
   scale_fill_manual( 
     name = '', 
-    values = c("Mins lost due turnover" = "#faab36",
-               "Mins saved due overlap" = '#249ea0') ) +
+    values = c('Mins lost due turnover' = '#faab36',
+               'Mins saved due overlap' = '#249ea0') ) +
   
   scale_color_manual( 
     name = '', 
-    values = c("Trend" = "#fd5901") ) +
+    values = c('Trend' = '#fd5901') ) +
   
   labs(
-    title = "Inter Operation Time", 
-    x = "Days", 
-    y = "Minutes",
-    fill = "Time" ) +
+    title = 'Inter Operation Time', 
+    x = 'Days', 
+    y = 'Minutes',
+    fill = 'Time' ) +
   
   theme_minimal() +
   theme(
     axis.text.x = element_text(angle = -90, hjust = 0),
     panel.grid.major.x = element_blank(),  # Remove y-axis grid lines
-    legend.position = "bottom",
-    legend.direction = "horizontal",
-    text = element_text(size = 12, family = "sans") )
+    legend.position = 'bottom',
+    legend.direction = 'horizontal',
+    text = element_text(size = 12, family = 'sans') )
 
 
 inter_op_interval_p
@@ -529,14 +634,308 @@ inter_op_interval_p
 
 # Early Finish/ Over Runs Chart -------------------------------------------
 
+over_runs_df <- prepared_df |> 
+  filter(
+    !is.na(anaesthetic_start),
+    !is.na(anaesthetic_finish)
+  ) |> 
+  group_by(week, theatre) |> 
+  reframe( total_over_run = sum(over_run, na.rm = TRUE) )
+
+View(over_runs_df)
+
+
+early_finish_df <- prepared_df |> 
+  filter(
+    !is.na(anaesthetic_start),
+    !is.na(anaesthetic_finish),
+    anaesthetic_finish <= theatre_close
+  ) |> 
+  group_by(surgery_start_date, theatre) |> 
+
+  reframe(
+    week = week[ which.max(anaesthetic_finish) ],
+    theatre_close = theatre_close[ which.max(anaesthetic_finish) ],
+    duration = duration[ which.max(anaesthetic_finish) ],
+    last_core_case_finish = max( anaesthetic_finish, na.rm = TRUE ),
+    
+    early_finish = difftime(
+      last_core_case_finish,
+      theatre_close, 
+      units = 'mins')) |> 
+  
+  # Grouping by weeks and theatres:
+  group_by(week, theatre) |>
+  reframe( total_early_finish = sum(early_finish) )
+  
+
+View(early_finish_df)
+
+
+early_finish_over_run_df <- inner_join(
+    early_finish_df, 
+    over_runs_df, 
+    by = c('week', 'theatre')) |> 
+  mutate( trend = (total_early_finish * 1.5 + total_over_run) / 2 ) |> 
+  filter(theatre == 'F')
+
+# View(early_finish_over_run_df)
+
+
+# Create a plot
+early_finish_over_run_p <- ggplot( 
+  early_finish_over_run_df, 
+  aes(x = factor(week)) ) +
+  
+  geom_bar(
+    aes(y = total_early_finish, fill = 'Early finish'), 
+    stat = 'identity', 
+    alpha = 0.7,
+    position = 'identity') +
+  
+  geom_bar(
+    aes(y = total_over_run, fill = 'Over run'), 
+    stat = 'identity', 
+    alpha = 0.7,
+    position = 'identity') +
+  
+  # geom_line(
+  #   aes(y = trend, color = 'Trend'),
+  #   group = 1,
+  #   # linejoin = 'round',
+  #   linetype = 'dashed') +
+  
+  geom_point(
+    aes(y = trend, color = 'Trend'),
+    shape = 4,
+    size = 5,
+    alpha = 0.7) +
+  
+  geom_text(
+    aes(
+      y = max(total_over_run), 
+      label = total_over_run),
+    position = position_stack(vjust = 2.3),
+    fontface = 'bold',
+    size = 3) +
+  
+  geom_text(
+    aes(
+      y = max(total_over_run), 
+      label = total_early_finish),
+    position = position_stack(vjust = 2),
+    fontface = 'bold',
+    size = 3) +
+  
+  scale_fill_manual( 
+    name = '', 
+    values = c('Early finish' = '#faab36',
+               'Over run' = '#249ea0') ) +
+  
+  scale_color_manual( 
+    name = '', 
+    values = c('Trend' = '#fd5901') ) +
+  
+  labs(
+    title = 'Early Finish (-)/ Over Run (+) (PM)', 
+    x = 'Weeks', 
+    y = 'Minutes',
+    fill = 'Time' ) +
+  
+  theme_minimal() +
+  theme(
+    # axis.text.x = element_text(angle = -90, hjust = 0),
+    panel.grid.major.x = element_blank(),  # Remove y-axis grid lines
+    legend.position = 'bottom',
+    legend.direction = 'horizontal',
+    text = element_text(size = 12, family = 'sans') )
+
+early_finish_over_run_p
+
 
 # % Utilisation and Number of Cases in Core Hours -------------------------
 
+utilisation_and_cases_df <- prepared_df |> 
+  group_by(surgery_start_date, theatre) |> 
+  
+  reframe(
+    incore_cases = sum(is_incore_case, na.rm = TRUE),
+    outcore_cases = sum(is_outcore_case, na.rm = TRUE),
+    cancelled_cases = sum(is_cancalled_case, na.rm = TRUE),
+    total_cases = incore_cases + outcore_cases + cancelled_cases,
+    
+    total_core_time = as.numeric( core_time_m[ which.max(core_time_m) ] ),
+    total_incore_time = as.numeric( sum(incore_time, na.rm = TRUE) ),
+    total_outcore_time = as.numeric( sum(outcore_time, na.rm = TRUE) ),
+    
+    incore_time_usage = total_incore_time / total_core_time,
+    outcore_time_usage = total_outcore_time / total_core_time,
+    total_time_usage = incore_time_usage + outcore_time_usage
+  ) |> 
+  
+  tidyr::gather(
+    key = 'case_type', 
+    value = 'num_cases', 
+    outcore_cases,
+    cancelled_cases,
+    incore_cases) |> 
+  
+  mutate( 
+    surgery_start_date = factor(
+      surgery_start_date,
+      levels = unique(surgery_start_date)
+    ),
+    case_type = factor(
+      case_type,
+      levels = unique(case_type)
+    )
+  ) |> 
+  
+  filter(theatre == 'L')
 
-# % Utilisation and Number of Cases in Non-Core Hours ---------------------
+
+# View(utilisation_and_cases_df)
 
 
-# % Utilisation Pure Core with Non-Core Time  ---------------------------------------------
+# Create a plot
+utilisation_and_cases_p <- ggplot( 
+  utilisation_and_cases_df, 
+  aes(x = surgery_start_date) ) +
+  
+  geom_bar(
+    aes(y = num_cases, 
+        fill = case_type),
+    stat = 'identity',
+    alpha = 0.5,
+    position = 'stack') +
+  
+  # geom_bar(
+  #   aes(y = outcore_cases, fill = 'Num of Out-Core'), 
+  #   stat = 'identity',
+  #   alpha = 0.5,
+  #   position = 'stack') +
+  # 
+  # geom_bar(
+  #   aes(y = incore_cases, fill = 'Num of In-Core'), 
+  #   stat = 'identity',
+  #   alpha = 0.5,
+  #   position = 'stack') +
+  # 
+  # geom_bar(
+  #   aes(y = cancelled_cases, fill = 'Num of Cancelled'), 
+  #   stat = 'identity',
+  #   alpha = 0.5,
+  #   position = 'stack') +
+
+
+  # geom_ribbon(
+  #   aes(
+  #     ymin = total_time_usage * 5, 
+  #     ymax = incore_time_usage * 5,
+  #     fill = 'Out-Core Utilisaiton'), 
+  #   # fill = "blue", 
+  #   alpha = 0.3
+  # ) +
+
+  
+  geom_line(
+    aes(
+      y = total_time_usage * 5, 
+      color = 'Out-Core Utilisaiton'),
+    # color = '#faab36',
+    linetype = 'dashed',
+    group = 2
+  ) +
+  
+  geom_point(
+    aes(
+      y = total_time_usage * 5, 
+      color = 'Out-Core Utilisaiton'),
+    shape = 16,
+    # color = '#faab36',
+    size = 1
+  ) +
+  
+  geom_line(
+    aes(
+      y = incore_time_usage * 5, 
+      color = 'In-Core Utilisation'),
+    group = 1
+  ) +
+  
+  
+  geom_point(
+    aes(
+      y = incore_time_usage * 5, 
+      color = 'In-Core Utilisation'),
+    shape = 19,
+    size = 1
+  ) +
+
+  geom_ribbon(
+    aes(x = surgery_start_date,
+        ymin = incore_time_usage * 5, 
+        ymax = total_time_usage * 5, 
+        fill = 'outcore_cases'), 
+    alpha = 0.3
+  ) +
+
+  # geom_text(
+  #   aes(
+  #     y = max(total_over_run), 
+  #     label = total_over_run),
+  #   position = position_stack(vjust = 2.3),
+  #   fontface = 'bold',
+  #   size = 3) +
+  # 
+  # geom_text(
+  #   aes(
+  #     y = max(total_over_run), 
+  #     label = total_early_finish),
+  #   position = position_stack(vjust = 2),
+  #   fontface = 'bold',
+  #   size = 3) +
+  
+  scale_fill_manual( 
+    name = '', 
+    values = c('incore_cases' = '#249ea0',
+               'outcore_cases' = '#faab36',
+               'cancelled_cases' = '#fd5901') ) +
+  
+  scale_color_manual( 
+    name = '', 
+    values = c('In-Core Utilisation' = '#249ea0',
+               'Out-Core Utilisaiton' = '#faab36') ) +
+  
+  labs(
+    title = 'Time Utilisation and Number of Cases', 
+    x = 'Days', 
+    y = '% Utilisation',
+    fill = 'Num Cases' ) +
+  
+  scale_y_continuous(
+    sec.axis = sec_axis(
+      ~./5, 
+      name = '% Utilisation',
+      breaks = seq(0, 2.8, by = 0.2),
+      labels = scales::percent_format(scale = 100)),
+    
+    name = 'Number of Cases',
+    breaks = seq(0, 14, by = 2),
+    limits = c(0, 14)
+  ) +
+  
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = -90, hjust = 0),
+    panel.grid.major.x = element_blank(),  # Remove x-axis grid lines
+    # panel.grid.minor.y = element_blank(),
+    legend.position = 'bottom',
+    # legend.direction = 'horizontal',
+    text = element_text(size = 12, family = 'sans') )
+
+print(utilisation_and_cases_p)
+
 
 
 
