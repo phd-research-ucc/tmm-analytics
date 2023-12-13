@@ -1,18 +1,22 @@
 # Meta Data ---------------------------------------------------------------
 #
-# TMM File Analytics
-# 01_setup.R
+# Version:      1.1
+# Author:       Oleksii Dovhaniuk
+# Created on:   2023-11-26
+# Updated on:   2023-12-13
+#
+# Description:  The script is a monolith development file for 
+#               all job scripts of this project. It is mainly 
+#               for the inner uses of testing and trying new ideas.
+#               
+#               It should not be used for knitting the reports!!!
+#
+# Location:     scripts/_dev.R
 #
 
+# Load Packages ----------------------------------------------------------------
 
-
-
-# Import Packages ----------------------------------------------------------------
-
-library(tidyverse)
-library(lubridate)
-library(ggplot2)
-library(glue)
+source('src/scripts/_load_packages.R')
 
 
 
@@ -756,7 +760,7 @@ early_finish_over_run_p
 # % Utilisation and Number of Cases in Core Hours -------------------------
 
 utilisation_and_cases_df <- prepared_df |> 
-  group_by(surgery_start_date, theatre) |> 
+  group_by(surgery_start_date) |> 
   
   reframe(
     incore_cases = sum(is_incore_case, na.rm = TRUE),
@@ -789,9 +793,10 @@ utilisation_and_cases_df <- prepared_df |>
       case_type,
       levels = unique(case_type)
     )
-  ) |> 
-  
-  filter(theatre == 'L')
+  ) 
+# |> 
+#   
+#   filter(theatre == 'L')
 
 
 # View(utilisation_and_cases_df)
@@ -917,12 +922,12 @@ utilisation_and_cases_p <- ggplot(
     sec.axis = sec_axis(
       ~./5, 
       name = '% Utilisation',
-      breaks = seq(0, 2.8, by = 0.2),
+      breaks = seq(0, 6, by = 0.4),
       labels = scales::percent_format(scale = 100)),
     
     name = 'Number of Cases',
-    breaks = seq(0, 14, by = 2),
-    limits = c(0, 14)
+    breaks = seq(0, 30, by = 2),
+    limits = c(0, 30)
   ) +
   
   theme_minimal() +
