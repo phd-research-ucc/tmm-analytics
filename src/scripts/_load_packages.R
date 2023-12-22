@@ -3,7 +3,7 @@
 # Version:      1.0
 # Author:       Oleksii Dovhaniuk
 # Created on:   2023-12-13
-# Updated on:   2023-12-13
+# Updated on:   2023-12-22
 #
 # Description:  This script loads all required packages for
 #               the TMM Analysis project. Can be called 
@@ -17,5 +17,9 @@
 
 library(tidyverse)
 library(lubridate)
+library(patchwork)
 library(ggplot2)
 library(glue)
+
+
+

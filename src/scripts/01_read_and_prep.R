@@ -325,12 +325,12 @@ prepared_df <- clean_data_df |>
 remove(
   # data frames
   adhocs_for_merge_df,
-  clean_data_df,
+  # clean_data_df,
   entry_data_df,
   mng_theatres_df,
   theatre_adhoc_reasons,
-  theatre_adhocs_df,
-  theatre_core_time_df,
+  # theatre_adhocs_df,
+  # theatre_core_time_df,
   theatre_names_df,
   
   # functions

@@ -1,0 +1,102 @@
+---
+title: "Operating Theatre Monthly Report"
+author: "Oleksii Dovhaniuk"
+date: today
+format: html
+editor: visual
+execute:
+  echo: false
+  warning: false
+project:
+     execute-dir: file
+---
+
+```{r, include=FALSE}
+
+source('scripts/06_tier_2_dashboard.R', local = knitr::knit_global())
+source('scripts/11_tier_3_summary.R', local = knitr::knit_global())
+```
+
+# **Summary - Tier 3 (All Theatres)**
+
+```{r}
+source('scripts/07_summary_table.R', local = knitr::knit_global())
+weeks_and_dates <- summary_df |> 
+  head(2) |> 
+  rename(
+    From = c1,
+    To = c2
+  )
+knitr::kable(weeks_and_dates)
+```
+
+```{r}
+#| label: tier_3_summary
+
+tier_3_summary
+```
+
+## Overview of OT Complex Capacity
+
+*(Using current core time)*
+
+```{r}
+source('scripts/07_summary_table.R', local = knitr::knit_global())
+
+capacity <- summary_df[3:6, 1, drop = FALSE] |> 
+  t() |> 
+  as.data.frame() |> 
+  rename(
+    NumberOfWeeks = num_weeks,
+    NumberOfTheatres = num_theatres,
+    NumberOfSpecialities = num_specialties,
+    Capacity = capacity
+  ) 
+rownames(capacity) <- NULL
+knitr::kable(capacity) 
+
+
+core_time <- summary_df[7:10, , drop = FALSE] |> 
+  rename(Minutes = c1, Hours = c2)
+knitr::kable(core_time)
+
+adhoc_summary <- adhoc_summary_table |> 
+  rename(
+    Minutes = total_lost_time_m,
+    Hours = total_lost_time_h
+  )  
+knitr::kable(adhoc_summary)
+
+
+utilisation_and_cases <- summary_df[11:13, , drop = FALSE] |> 
+  rename(Current = c1, Goal = c2)
+knitr::kable(utilisation_and_cases)
+
+```
+
+# **Dashboard - Tier 2**
+
+```{r}
+#| label: on_time_start
+
+source('scripts/02_on_time_start.R', local = knitr::knit_global())
+source('scripts/04_early_finish_and_over_run.R', local = knitr::knit_global())
+
+on_time_start_p + early_finish_over_run_p
+```
+
+```{r}
+#| label: inter_op_interval
+
+source('scripts/03_inter_operational_interval.R', local = knitr::knit_global())
+
+inter_op_interval_p
+```
+
+```{r}
+#| label: utilisation_and_cases
+
+source('scripts/05_utilisation_and_cases.R', local = knitr::knit_global())
+
+utilisation_and_cases_p
+```
