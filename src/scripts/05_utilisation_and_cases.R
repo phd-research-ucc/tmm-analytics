@@ -1,9 +1,9 @@
 # Meta Data --------------------------------------------------------------------
 #
-# Version:      1.0
+# Version:      1.1
 # Author:       Oleksii Dovhaniuk
 # Created on:   2023-12-13
-# Updated on:   2023-12-22
+# Updated on:   2024-01-02
 #
 # Description:  The script uses prepared data 
 #               from 01_read_and_prep.R script to
@@ -48,8 +48,8 @@ utilisation_and_cases_df <- prepared_df |>
   reframe(
     incore_cases = sum(incore_cases, na.rm = TRUE),
     outcore_cases = sum(outcore_cases, na.rm = TRUE),
-    cancelled_cases = sum(cancelled_cases, na.rm = TRUE),
-    total_cases = incore_cases + outcore_cases + cancelled_cases,
+    cancelled_cases = -sum(cancelled_cases, na.rm = TRUE),
+    total_cases = incore_cases + outcore_cases,
     
     total_core_time = sum(total_core_time, na.rm = TRUE),
     total_incore_time = sum(total_incore_time, na.rm = TRUE),
@@ -111,6 +111,16 @@ utilisation_and_cases_p <- ggplot(
     linetype = 'dashed'
   ) +
   
+  annotate(
+    geom = "text",
+    x = 22, 
+    y = 1 * 30 + 20,
+    label = "100%",
+    hjust = 1,
+    vjust = -0.5,
+    fontface = 'bold',
+    size = 4
+  ) +
   
   geom_line(
     aes(
@@ -216,8 +226,13 @@ utilisation_and_cases_p <- ggplot(
     #   labels = scales::percent_format(scale = 100)),
     
     name = 'Number of Cases',
-    breaks = seq(0, 60, by = 10),
-    limits = c(0, 60)
+    breaks = seq(-5, 60, 5),
+    minor_breaks = seq(
+      min(utilisation_and_cases_df$cancelled_cases, na.rm = TRUE), 
+      max(utilisation_and_cases_df$total_cases, na.rm = TRUE), 
+      1
+    ),
+    limits = c(-5, 60)
   ) +
   
   
@@ -225,9 +240,12 @@ utilisation_and_cases_p <- ggplot(
   theme(
     axis.text.x = element_text(angle = -90, hjust = 0, vjust = 0.5),
     legend.position = 'bottom',
-
-    text = element_text(size = 12, family = 'sans'),
-    
+    panel.grid.minor = element_line(
+      color = "lightgray", 
+      size = 0.2, 
+      linetype = "dashed"
+    ),
+    text = element_text(size = 12, family = 'sans')
   )
 
 

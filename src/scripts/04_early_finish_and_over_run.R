@@ -1,9 +1,9 @@
 # Meta Data --------------------------------------------------------------------
 #
-# Version:      1.0
+# Version:      1.1
 # Author:       Oleksii Dovhaniuk
 # Created on:   2023-12-13
-# Updated on:   2023-12-22
+# Updated on:   2024-01-02
 #
 # Description:  The script uses prepared data 
 #               from 01_read_and_prep.R script to
@@ -44,7 +44,8 @@ early_finish_df <- prepared_df |>
   filter(
     !is.na(anaesthetic_start),
     !is.na(anaesthetic_finish),
-    anaesthetic_finish <= theatre_close
+    anaesthetic_finish < theatre_close,
+    anaesthetic_finish > theatre_open
   ) |> 
   group_by(surgery_start_date, theatre) |> 
   
@@ -62,14 +63,21 @@ early_finish_df <- prepared_df |>
   
   group_by(week) |>
   #  TODO: Fix too much early finish time! 
-  reframe( total_early_finish = floor(sum(early_finish) / 3)  )
+  reframe( total_early_finish = sum(early_finish) )
 
 early_finish_over_run_df <- inner_join(
     early_finish_df, 
     over_runs_df, 
     by = c('week')) |> 
   
-  mutate( trend = (total_early_finish * 1.5 + total_over_run) / 2 )
+  mutate( 
+    time_balance = (total_early_finish + total_over_run) / 2,
+    balance_sign = ifelse( 
+      sign(time_balance) == 0, 
+      1, 
+      -sign(time_balance)
+    )
+  )
   # filter(theatre == 'C')
 
 summary_early_late_finish_df <- early_finish_over_run_df |> 
@@ -90,14 +98,12 @@ early_finish_over_run_p <- ggplot(
       aes(x = factor(week)) 
     ) +
   
-  geom_hline(yintercept = 0, color = 'black') +
-  
   geom_bar(
     aes(y = total_early_finish, fill = 'Mins lost due early finish'), 
     stat = 'identity', 
     alpha = 0.7,
     position = 'identity',
-    width = 0.5
+    width = 0.8
   ) +
   
   geom_bar(
@@ -105,7 +111,25 @@ early_finish_over_run_p <- ggplot(
     stat = 'identity', 
     alpha = 0.7,
     position = 'identity',
-    width = 0.5
+    width = 0.8
+  ) +
+  
+  geom_line(
+    aes(
+      y = time_balance, 
+      color = 'Time balance'
+    ), 
+    group = 1
+  ) +
+  
+  geom_point(
+    aes(
+      y = time_balance,
+      color = 'Time balance'
+    ), 
+    shape = 19, 
+    size = 3,
+    alpha = 0.7
   ) +
 
   geom_text(
@@ -113,10 +137,11 @@ early_finish_over_run_p <- ggplot(
       y = total_over_run, 
       label = total_over_run
     ),
-    vjust = -1,
+    vjust = -0.75,
     hjust = 0.5,
     fontface = 'bold',
-    size = 3
+    size = 5,
+    colour = '#B26D06'
   ) +
   
   geom_text(
@@ -127,8 +152,23 @@ early_finish_over_run_p <- ggplot(
     vjust = 1.75,
     hjust = 0.5,
     fontface = 'bold',
-    size = 3
+    size = 5,
+    colour = '#fd5901'
   ) +
+  
+  geom_text(
+    aes(
+      y = time_balance, 
+      label = time_balance
+    ),
+    vjust = 1.5 * early_finish_over_run_df$balance_sign + 0.4,
+    hjust = 0.5,
+    fontface = 'bold',
+    size = 5,
+    colour = '#0F4143'
+  ) +
+  
+  geom_hline(yintercept = 0, color = 'black') +
   
   scale_y_continuous(
     limits = c(
@@ -141,9 +181,15 @@ early_finish_over_run_p <- ggplot(
     name = '', 
     values = c(
       'Mins lost due early finish' = '#fd5901',
-      'Mins of over run' = '#995D81'
+      'Mins of over run' = '#faab36'
     )
   ) +
+  
+  scale_color_manual( 
+    name = '', 
+    values = c('Time balance' = '#249ea0')
+  ) +
+  
   
   scale_x_discrete(
     labels = paste0('Wk ', early_finish_over_run_df$week)
@@ -171,13 +217,13 @@ early_finish_over_run_p <- ggplot(
 
 # Clean Up ---------------------------------------------------------------------
 
-remove(
-  prepared_df,
-  early_finish_df,
-  early_finish_over_run_df,
-  summary_early_late_finish_df,
-  over_runs_df
-)
+# remove(
+#   prepared_df,
+#   early_finish_df,
+#   early_finish_over_run_df,
+#   summary_early_late_finish_df,
+#   over_runs_df
+# )
 
 
 

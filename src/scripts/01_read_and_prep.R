@@ -33,7 +33,7 @@ entry_data_df <- read.csv(
 )
 
 mng_theatres_df <- read.csv(
-  'data/raw/2023-11-26_tmm_1month_1hospital_mng_theatres.csv'
+  'data/raw/2023-12-08_tmm_1month_1hospital_mng_theatres.csv'
 )
 
 

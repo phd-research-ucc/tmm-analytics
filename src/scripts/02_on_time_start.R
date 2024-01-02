@@ -1,9 +1,9 @@
 # Meta Data --------------------------------------------------------------------
 #
-# Version:      1.0
+# Version:      1.1
 # Author:       Oleksii Dovhaniuk
 # Created on:   2023-12-13
-# Updated on:   2023-12-22
+# Updated on:   2024-01-01
 #
 # Description:  The script uses prepared data 
 #               from 01_read_and_prep.R script to
@@ -27,9 +27,7 @@ source('scripts/01_read_and_prep.R')
 
 
 
-
 # Mine Needed Data -------------------------------------------------------------
-
 
 on_time_start_df <- prepared_df |> 
   filter( !is.na(anaesthetic_start) ) |> 
@@ -40,29 +38,27 @@ on_time_start_df <- prepared_df |>
     first_surgery_start = min(anaesthetic_start, na.rm = TRUE),
     theatre_open = theatre_open[which.min(anaesthetic_start)],
     duration = duration[which.min(anaesthetic_start)],
-    early_start = sum(as.integer(early_start), rm.na = TRUE),
-    
-    late_start = case_when(
-      first_surgery_start + duration > theatre_open ~
-        difftime(first_surgery_start, theatre_open, units = 'mins'),
-      TRUE ~ as.difftime(0, units = 'mins')
+    start_delta = difftime(first_surgery_start, theatre_open, units = 'mins'),
+    type = case_when(
+      first_surgery_start + duration < theatre_open ~ 'out-core', 
+      start_delta <= 0 ~ 'on-time',
+      start_delta > 0 ~ 'late'
     ),
-    
-    on_time = late_start <= 0
   ) |> 
   
   # Grouping by weeks and theatres:
   group_by(week) |>
   reframe(
-    minutes_lost = sum(
-      as.integer( late_start[ which(late_start > 0) ] ), 
+    days_on_time = sum(type == 'on-time') / n(),
+    late_minutes = sum(
+      as.integer( start_delta[ which(type == 'late') ] ), 
       rm.na = TRUE
     ),
-    early_start = sum(early_start, rm.na = TRUE),
-    days_on_time = sum(on_time, rm.na = TRUE) / 30
+    early_minutes = sum(
+      as.integer( start_delta[ which(type == 'on-time') ] ), 
+      rm.na = TRUE
+    )
   ) 
-# |> 
-  # filter(theatre == 'I')
 
 
 # View(on_time_start_df)
@@ -73,38 +69,58 @@ on_time_start_df
 
 # Render On Time Start Chart ---------------------------------------------------
 
+upper_boundary = max(on_time_start_df$late_minutes) + 200
+lower_boundary = -upper_boundary
+percent_pos_multiplier = on_time_start_df$days_on_time * upper_boundary
 
-# Create a plot
 on_time_start_p <- ggplot( 
     on_time_start_df, 
     aes(x = factor(week))
   ) +
   
-  geom_hline(yintercept = 0, color = 'black') +
-  
   geom_bar(
-    aes(y = minutes_lost, fill = 'Mins lost due late start'), 
+    aes(
+      y = late_minutes, 
+      fill = 'Late mins'
+    ), 
     stat = 'identity', 
     alpha = 0.7,
     position = 'identity',
-    width = 0.5
+    width = 0.8
+  ) +
+  
+  geom_bar(
+    aes(
+      y = early_minutes, 
+      fill = 'Early mins'
+    ), 
+    stat = 'identity', 
+    alpha = 0.7,
+    position = 'identity',
+    width = 0.8
   ) +
   
   geom_line(
-    aes(y = days_on_time * 1000, color = '% Days on-time start'), 
+    aes(
+      y = percent_pos_multiplier, 
+      color = '% Days on-time start'
+    ), 
     group = 1
   ) +
   
   geom_point(
-    aes(y = days_on_time * 1000, color = '% Days on-time start'), 
-    shape = 15, 
+    aes(
+      y = percent_pos_multiplier,
+      color = '% Days on-time start'
+    ), 
+    shape = 16, 
     size = 3,
     alpha = 0.7
   ) +
   
   geom_text(
     aes(
-      y = days_on_time * 1000, 
+      y = percent_pos_multiplier, 
       label = scales::percent(days_on_time, scale = 100)
     ),
     vjust = -1.5,
@@ -114,23 +130,34 @@ on_time_start_p <- ggplot(
   ) +
   
   geom_text(
-    aes(y = minutes_lost, label = minutes_lost),
-    vjust = -1.5,
+    aes(
+      y = 0, 
+      label = late_minutes
+    ),
+    vjust = -1,
     hjust = 0.5,
+    alpha = 0.7,
     fontface = 'bold',
-    size = 3
+    size = 5,
+    colour = '#521B00'
   ) +
   
+  geom_text(
+    aes(
+      y = early_minutes, 
+      label = early_minutes,
+    ),
+    vjust = 1.75,
+    hjust = 0.5,
+    fontface = 'bold',
+    size = 5,
+    colour = '#249ea0'
+  ) +
+  
+  geom_hline(yintercept = 0, color = 'black') +
+  
   scale_y_continuous(
-    # sec.axis = sec_axis(
-    #   ~./600,
-    #   name = 'Days On-Time Start (%)',
-    #   breaks = seq(0, 1, by = 0.2),
-    #   labels = scales::percent_format(scale = 100)
-    # ),
-    # name = 'Minutes Lost due to Late Start',
-    # breaks = seq(0, 600, by = 100),
-    limits = c(0, 1600)
+    limits = c(lower_boundary, upper_boundary)
   ) +
   
   scale_x_discrete(
@@ -140,8 +167,9 @@ on_time_start_p <- ggplot(
   scale_fill_manual( 
     name = '', 
     values = c(
-      'Mins lost due late start' = '#faab36',
-      'Mins early' = '#fd5901'
+      'Late mins' = '#faab36',
+      'Early mins' = '#249ea0',
+      ''
     )
   ) +
   
@@ -172,10 +200,10 @@ on_time_start_p <- ggplot(
 
 # Clean Up ---------------------------------------------------------------------
 
-remove(
-  on_time_start_df,
-  prepared_df
-)
+# remove(
+#   on_time_start_df,
+#   prepared_df
+# )
 
 
 

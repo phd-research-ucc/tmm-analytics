@@ -1,9 +1,9 @@
 # Meta Data --------------------------------------------------------------------
 #
-# Version:      1.0
+# Version:      1.1
 # Author:       Oleksii Dovhaniuk
 # Created on:   2023-12-13
-# Updated on:   2023-12-22
+# Updated on:   2024-01-02
 #
 # Description:  The script uses prepared data 
 #               from 01_read_and_prep.R script to
@@ -36,6 +36,7 @@ inter_op_interval_df <- prepared_df |>
     !is.na(anaesthetic_start), 
     !is.na(anaesthetic_finish)
   ) |> 
+  
   group_by(surgery_start_date, theatre) |> 
   arrange(surgery_start_date, theatre, anaesthetic_start) |> 
   
@@ -65,14 +66,33 @@ inter_op_interval_df <- prepared_df |>
   reframe(
     trend = sum(invert_interval, na.rm = TRUE) / 2,
     total_overlap = sum(overlap_time, na.rm = TRUE),
-    total_lost = sum(lost_time, na.rm = TRUE)
+    total_lost = sum(lost_time, na.rm = TRUE),
+    max_lost = max(lost_time, na.rm = TRUE),
+    max_overlap = min(total_overlap, na.rm = TRUE),
+    num_cases = n()
   ) |> 
   
   group_by(surgery_start_date) |> 
   reframe(
     total_overlap = sum(total_overlap, na.rm = TRUE),
-    total_lost = sum(total_lost, na.rm = TRUE)
-  )
+    total_lost = sum(total_lost, na.rm = TRUE),
+    max_turnover = max(max_lost),
+    avg_turnover = round(
+      as.numeric( total_lost / sum(num_cases) ),
+      1
+    ),
+    max_overlap = min(max_overlap)
+  ) |> 
+  
+  mutate(
+    # interval_avg = total_overlap / total_cases,
+    weekday_abbr = format(surgery_start_date, '%a'),
+    month_abbr = format(surgery_start_date, '%b'),
+    day_date = format(surgery_start_date, '%d'),
+    x_date_label = glue('{weekday_abbr}\n{day_date}\n{month_abbr}')
+  ) |> 
+  
+  arrange(surgery_start_date)
 
 inter_op_interval_df
 
@@ -81,24 +101,83 @@ inter_op_interval_df
 
 # Render Inter Operation Interval Chart ----------------------------------------
 
+upper_boundary = max(inter_op_interval_df$total_lost)
+lower_boundary = min(inter_op_interval_df$total_overlap)
+max_avg_turnover = max(inter_op_interval_df$avg_turnover)
+
 
 inter_op_interval_p <- ggplot( 
-  inter_op_interval_df,
-  aes(x = factor(surgery_start_date)) ) +
-  
-  geom_hline(yintercept = 0, color = 'black') +
-  
-  geom_bar(
-    aes(y = total_lost, fill = 'Mins total turnover'), 
-    stat = 'identity', 
-    alpha = 0.7,
-    position = 'identity') +
+    inter_op_interval_df,
+    aes(x = reorder(x_date_label, surgery_start_date))
+  ) +
   
   geom_bar(
-    aes(y = total_overlap, fill = 'Mins total overlap'), 
+    aes(
+      y = total_lost, 
+      fill = 'Total turnover'
+    ), 
     stat = 'identity', 
     alpha = 0.7,
-    position = 'identity') +
+    position = 'identity'
+  ) +
+  
+  geom_bar(
+    aes(
+      y = total_overlap, 
+      fill = 'Total overlap'
+    ), 
+    stat = 'identity', 
+    alpha = 0.7,
+    position = 'identity'
+  ) +
+  
+  geom_bar(
+    aes(
+      y = max_turnover,
+      fill = 'Max turnover',
+    ), 
+    alpha = 0.3,
+    stat = 'identity'
+  ) +
+  
+  geom_bar(
+    aes(
+      y = max_overlap,
+      fill = 'Max overlap',
+    ), 
+    alpha = 0.7,
+    stat = 'identity'
+  ) +
+  
+  geom_line(
+    aes(
+      y = avg_turnover, 
+      color = 'Avg turnover'
+    ), 
+    group = 1
+  ) +
+  
+  geom_point(
+    aes(
+      y = avg_turnover,
+      color = 'Avg turnover'
+    ), 
+    shape = 15, 
+    size = 2,
+    alpha = 0.7
+  ) +
+  
+  geom_text(
+    aes(
+      y = avg_turnover,
+      label = avg_turnover,
+      color = 'Avg turnover'
+    ),
+    vjust = -0.75,
+    hjust = 0.5,
+    fontface = 'bold',
+    size = 2.5
+  ) +
   
   geom_text(
     aes(
@@ -109,7 +188,19 @@ inter_op_interval_p <- ggplot(
     hjust = 0.5,
     fontface = 'bold',
     size = 3
-    ) +
+  ) +
+  
+  geom_text(
+    aes(
+      y = max_turnover,
+      label = max_turnover,
+    ),
+    vjust = -0.25,
+    hjust = 0.5,
+    fontface = 'bold',
+    size = 3,
+    colour = '#fd5901'
+  ) +
   
   geom_text(
     aes(
@@ -123,41 +214,47 @@ inter_op_interval_p <- ggplot(
     color = '#249ea0'
   ) +
   
+  geom_hline(yintercept = 0, color = 'black') +
+  
   scale_fill_manual( 
     name = '', 
     values = c(
-      'Mins total turnover' = '#faab36',
-      'Mins total overlap' = '#249ea0')
-    ) +
+        'Total turnover' = '#faab36',
+        'Total overlap' = '#249ea0',
+        'Max turnover' = '#fd5901',
+        'Max overlap' = '#7ADFE1'
+      )
+  ) +
   
   scale_color_manual( 
     name = '', 
-    values = c('Trend' = '#fd5901')
+    values = c(
+      'Avg turnover' = '#521B00',
+      'Max turnover' = '#fd5901'
+     )
   ) +
   
   scale_y_continuous(
-    limits = c(
-      -max(inter_op_interval_df$total_lost) - 40, 
-      max(inter_op_interval_df$total_lost) + 40
-    )
+    limits = c(lower_boundary, upper_boundary)
   ) +
   
   labs(
-    title = 'Inter Operation Interval', 
+    title = 'Inter Operation Interval, minutes', 
     x = '', 
     y = 'Minutes',
     fill = 'Time'
   ) +
   
   theme_minimal() +
+
   theme(
-    axis.text.x = element_text(angle = -90, hjust = 0, vjust = 0.5),
+    axis.text.x = element_text(hjust = 0.5, vjust = 0.5),
     panel.grid.major.y = element_blank(),
     panel.grid.minor.y = element_blank(),
     legend.position = 'bottom',
     legend.direction = 'horizontal',
     text = element_text(size = 12, family = 'sans'),
-    axis.title.y = element_blank(), 
+    axis.title.y = element_blank(),
     axis.text.y = element_blank()
   )
 
@@ -166,10 +263,10 @@ inter_op_interval_p <- ggplot(
 
 # Clean Up ---------------------------------------------------------------------
 
-remove(
-  prepared_df,
-  inter_op_interval_df
-)
+# remove(
+#   prepared_df,
+#   inter_op_interval_df
+# )
 
 
 
