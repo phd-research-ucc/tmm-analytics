@@ -248,12 +248,30 @@ prepared_df <- clean_data_df |>
     ),
     
     over_run = case_when(
-      anaesthetic_start > theatre_close ~ difftime(theatre_open, 
-                                                   theatre_open, 
-                                                   units = 'mins'),
-      theatre_close >= anaesthetic_finish ~ difftime(theatre_open, 
-                                                     theatre_open, 
-                                                     units = 'mins'),
+      anaesthetic_start > theatre_close ~ difftime(
+        theatre_open, 
+        theatre_open, 
+        units = 'mins'
+      ),
+      theatre_close >= anaesthetic_finish ~ difftime(
+        theatre_open, 
+        theatre_open, 
+        units = 'mins'
+      ),
+      TRUE ~ difftime(anaesthetic_finish, theatre_close, units = 'mins')
+    ),
+    
+    early_finish = case_when(
+      anaesthetic_start > theatre_close ~ difftime(
+        theatre_open, 
+        theatre_open, 
+        units = 'mins'
+      ),
+      anaesthetic_finish >= theatre_close ~ difftime(
+        theatre_open, 
+        theatre_open, 
+        units = 'mins'
+      ),
       TRUE ~ difftime(anaesthetic_finish, theatre_close, units = 'mins')
     ),
     
@@ -303,8 +321,10 @@ prepared_df <- clean_data_df |>
     is_outcore_case = (
       anaesthetic_finish < theatre_open | anaesthetic_start > theatre_close
     ),
+    has_noncore_time_case = duration > incore_time,
+    is_noncore_case = case_type == 'Unsch',
     
-    is_cancalled_case = (surgery_status == 'case cancelled'),
+    is_cancelled_case = (surgery_status == 'case cancelled'),
     
     outcore_time = (case_when(
       is_outcore_case ~ duration,

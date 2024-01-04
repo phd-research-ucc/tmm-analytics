@@ -3,7 +3,7 @@
 # Version:      1.1
 # Author:       Oleksii Dovhaniuk
 # Created on:   2023-12-13
-# Updated on:   2024-01-02
+# Updated on:   2024-01-04
 #
 # Description:  The script uses prepared data 
 #               from 01_read_and_prep.R script to
@@ -43,9 +43,7 @@ over_runs_df <- prepared_df |>
 early_finish_df <- prepared_df |> 
   filter(
     !is.na(anaesthetic_start),
-    !is.na(anaesthetic_finish),
-    anaesthetic_finish < theatre_close,
-    anaesthetic_finish > theatre_open
+    !is.na(anaesthetic_finish)
   ) |> 
   group_by(surgery_start_date, theatre) |> 
   
@@ -53,13 +51,8 @@ early_finish_df <- prepared_df |>
     week = week[ which.max(anaesthetic_finish) ],
     theatre_close = theatre_close[ which.max(anaesthetic_finish) ],
     duration = duration[ which.max(anaesthetic_finish) ],
-    last_core_case_finish = max( anaesthetic_finish, na.rm = TRUE ),
-    
-    early_finish = difftime(
-      last_core_case_finish,
-      theatre_close, 
-      units = 'mins')
-    ) |> 
+    early_finish = early_finish[ which.max(anaesthetic_finish) ]
+  ) |> 
   
   group_by(week) |>
   #  TODO: Fix too much early finish time! 
@@ -165,15 +158,15 @@ early_finish_over_run_p <- ggplot(
     hjust = 0.5,
     fontface = 'bold',
     size = 5,
-    colour = '#0F4143'
+    colour = '#249ea0'
   ) +
   
   geom_hline(yintercept = 0, color = 'black') +
   
   scale_y_continuous(
     limits = c(
-      -summary_early_late_finish_df$limit - 100, 
-      summary_early_late_finish_df$limit + 100
+      -summary_early_late_finish_df$limit - 200, 
+      summary_early_late_finish_df$limit + 200
     )
   ) +
   
