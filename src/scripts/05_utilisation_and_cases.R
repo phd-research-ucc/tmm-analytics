@@ -3,13 +3,13 @@
 # Version:      1.1
 # Author:       Oleksii Dovhaniuk
 # Created on:   2023-12-13
-# Updated on:   2024-01-04
+# Updated on:   2024-01-05
 #
 # Description:  The script uses prepared data 
 #               from 01_read_and_prep.R script to
 #               render Utilisation and Cases Chart,
 #               which shows utilisation rates, number 
-#               of In-Core Cases cases, umber of Out-of-Core Cases
+#               of Sch Cases cases, umber of Out-of-Core Cases
 #               cases, and number cancelled cases.
 #
 #               Time span - 4 weeks.
@@ -51,7 +51,7 @@ source('scripts/01_read_and_prep.R')
 #     total_outcore_cases = sum(is_outcore_case),
 #     total_cancelled_cases = sum(is_cancelled_case),
 #     total_has_noncore_time_case = sum(has_noncore_time_case),
-#     total_noncore_cases = sum(is_noncore_case)
+#     total_unscheduled_cases = sum(is_noncore_case)
 #   )
 
 utilisation_and_cases_df <- prepared_df |> 
@@ -60,12 +60,13 @@ utilisation_and_cases_df <- prepared_df |>
   reframe(
     incore_cases = sum(is_incore_case, na.rm = TRUE),
     outcore_cases = sum(is_outcore_case, na.rm = TRUE),
-    noncore_cases = sum(is_noncore_case, na.rm = TRUE),
+    unscheduled_cases = sum(is_noncore_case, na.rm = TRUE),
     cancelled_cases = sum(is_cancelled_case, na.rm = TRUE),
     total_cases = incore_cases + outcore_cases + cancelled_cases,
     
     total_core_time = as.numeric( core_time_m[ which.max(core_time_m) ] ),
     total_incore_time = as.numeric( sum(incore_time, na.rm = TRUE) ),
+    total_noncore_time = as.numeric( sum(early_start + over_run), na.rm = TRUE ),
     total_outcore_time = as.numeric( sum(outcore_time, na.rm = TRUE) )
   ) |> 
   
@@ -73,22 +74,29 @@ utilisation_and_cases_df <- prepared_df |>
   reframe(
     outcore_cases = sum(outcore_cases, na.rm = TRUE),
     'Out-of-Core Cases' = outcore_cases,
-    noncore_cases = sum(noncore_cases, na.rm = TRUE),
-    'Non-Core Cases' = noncore_cases,
+    unscheduled_cases = sum(unscheduled_cases, na.rm = TRUE),
+    'Unsch Cases' = unscheduled_cases,
     cancelled_cases = -sum(cancelled_cases, na.rm = TRUE),
     'Cancelled Cases' = cancelled_cases,
     incore_cases = sum(incore_cases, na.rm = TRUE),
-    'In-Core Cases' = incore_cases - noncore_cases,
+    'Sch Cases' = incore_cases - unscheduled_cases,
     total_cases = incore_cases + outcore_cases,
     
     total_core_time = sum(total_core_time, na.rm = TRUE),
     total_incore_time = sum(total_incore_time, na.rm = TRUE),
+    total_noncore_time = sum(total_noncore_time, na.rm = TRUE),
     total_outcore_time = sum(total_outcore_time, na.rm = TRUE),
     
     incore_time_usage = total_incore_time / total_core_time,
+    noncore_time_usage = total_noncore_time / total_core_time,
     outcore_time_usage = total_outcore_time / total_core_time,
+    utilisation_with_noncore_time = incore_time_usage + noncore_time_usage,
     total_time_usage = incore_time_usage + outcore_time_usage,
-    
+    total_topup = scales::percent(
+        total_time_usage - utilisation_with_noncore_time, 
+        scale = 100,
+        accuracy = 1
+      )
   ) 
 
 utilisation_and_cases_plotting_df <- utilisation_and_cases_df |> 
@@ -96,8 +104,8 @@ utilisation_and_cases_plotting_df <- utilisation_and_cases_df |>
   tidyr::gather(
     key = 'case_type', 
     value = 'num_cases',
-    'Non-Core Cases',
-    'In-Core Cases',
+    'Unsch Cases',
+    'Sch Cases',
     'Out-of-Core Cases',
     'Cancelled Cases'
   ) |> 
@@ -116,8 +124,8 @@ utilisation_and_cases_plotting_df <- utilisation_and_cases_df |>
       case_type,
       levels = c(
         'Out-of-Core Cases',
-        'In-Core Cases',
-        'Non-Core Cases',
+        'Sch Cases',
+        'Unsch Cases',
         'Cancelled Cases'
       )
     )
@@ -127,6 +135,11 @@ utilisation_and_cases_plotting_df <- utilisation_and_cases_df |>
 
 # Render Utilisation and Cases Chart ---------------------------------------
 
+percent_start <- max(utilisation_and_cases_plotting_df$total_cases)
+percent_range <- percent_start * 2.5
+upper_border <- percent_start * 3
+lower_border <- -floor(percent_start / 2)
+percent_start <- 0
 
 utilisation_and_cases_p <- ggplot( 
       utilisation_and_cases_plotting_df, 
@@ -136,7 +149,7 @@ utilisation_and_cases_p <- ggplot(
   geom_bar(
     aes(
       y = num_cases, 
-      fill = case_type
+      fill = case_type,
     ),
     stat = 'identity',
     alpha = 0.7,
@@ -149,7 +162,7 @@ utilisation_and_cases_p <- ggplot(
   ) +
   
   geom_hline(
-    yintercept = 1 * 30 + 20, 
+    yintercept = 1 * percent_range + percent_start, 
     color = 'black',
     linetype = 'dashed'
   ) +
@@ -157,7 +170,7 @@ utilisation_and_cases_p <- ggplot(
   annotate(
     geom = "text",
     x = 21, 
-    y = 1 * 30 + 20,
+    y = 1 * percent_range + percent_start,
     label = "100%",
     hjust = 1,
     vjust = -0.5,
@@ -165,32 +178,86 @@ utilisation_and_cases_p <- ggplot(
     size = 4
   ) +
   
+  geom_ribbon(
+    aes(
+      x = as.integer( reorder(x_date_label, surgery_start_date) ),
+      ymin = utilisation_with_noncore_time * percent_range + percent_start,
+      ymax = total_time_usage * percent_range + percent_start,
+      fill = 'Out-of-Core Cases'
+    ),
+    alpha = .5
+  ) +
+  
+  geom_ribbon(
+    aes(
+      x = as.integer( reorder(x_date_label, surgery_start_date) ),
+      ymin = incore_time_usage * percent_range + percent_start,
+      ymax = utilisation_with_noncore_time * percent_range + percent_start,
+      fill = 'Unsch Cases'
+    ),
+    alpha = .5
+  ) +
+  
+  # geom_line(
+  #   aes(
+  #     y = total_time_usage * percent_range + percent_start, 
+  #     color = '% Total Utilisaiton'),
+  #   linetype = 'dashed',
+  #   group = 2
+  # ) +
+  
+  geom_point(
+    aes(
+      y = total_time_usage * percent_range + percent_start, 
+      color = '% Total Utilisaiton'),
+    shape = 17,
+    size = 1
+  ) +
+  
+geom_text(
+  aes(
+    y = total_time_usage * percent_range + percent_start,
+    label = ifelse(total_topup != '0%', glue("+{total_topup}"), '')
+  ),
+  colour = '#faab36',
+  vjust = -2.5,
+  hjust = 0.5,
+  fontface = 'bold',
+  size = 3
+) +
+  
   geom_line(
     aes(
-      y = total_time_usage * 30 + 20, 
-      color = '% Total Utilisaiton'),
+      y = utilisation_with_noncore_time * percent_range + percent_start, 
+      color = '% Utilisation with Non-Core Time'
+    ),
     linetype = 'dashed',
     group = 2
   ) +
   
   geom_point(
     aes(
-      y = total_time_usage * 30 + 20, 
-      color = '% Total Utilisaiton'),
-    shape = 16,
+      y = utilisation_with_noncore_time * percent_range + percent_start, 
+      color = '% Utilisation with Non-Core Time'
+    ),
+    shape = 19,
     size = 1
   ) +
   
   geom_text(
     aes(
-      y = total_time_usage * 30 + 20, 
-      label = scales::percent(
-        total_time_usage, 
-        scale = 100,
-        accuracy = 1,
-      ),
-      color = '% Total Utilisaiton'
+      y = total_time_usage * percent_range + percent_start, 
+      label = ifelse(
+        utilisation_with_noncore_time > incore_time_usage + 0.005, 
+        scales::percent(
+          utilisation_with_noncore_time, 
+          scale = 100,
+          accuracy = 1,
+        ), 
+        ''
+      )
     ),
+    colour = '#37D1B0',
     vjust = -1.2,
     hjust = 0.5,
     fontface = 'bold',
@@ -199,22 +266,22 @@ utilisation_and_cases_p <- ggplot(
   
   geom_line(
     aes(
-      y = incore_time_usage * 30 + 20, 
-      color = '% In-Core Cases Utilisation'),
+      y = incore_time_usage * percent_range + percent_start, 
+      color = '% In-Core Utilisation'),
     group = 1
   ) +
   
   geom_point(
     aes(
-      y = incore_time_usage * 30 + 20, 
-      color = '% In-Core Cases Utilisation'),
+      y = incore_time_usage * percent_range + percent_start, 
+      color = '% In-Core Utilisation'),
     shape = 19,
     size = 1
   ) +
   
   geom_text(
     aes(
-      y = incore_time_usage * 30 + 20, 
+      y = incore_time_usage * percent_range + percent_start, 
       label = scales::percent(
         incore_time_usage, 
         scale = 100,
@@ -227,20 +294,10 @@ utilisation_and_cases_p <- ggplot(
     size = 3
   ) +
   
-  geom_ribbon(
-    aes(
-      x = as.integer( reorder(x_date_label, surgery_start_date) ),
-      ymin = incore_time_usage * 30 + 20,
-      ymax = total_time_usage * 30 + 20,
-      fill = 'Out-of-Core Cases'
-    ),
-    alpha = .2
-  ) +
-  
   geom_text(
     aes(
       y = total_cases,
-      label = ifelse(outcore_cases > 0, outcore_cases, '')
+      label = ifelse(outcore_cases > 0, outcore_cases, ''),
     ),
     colour = '#faab36',
     vjust = -0.5,
@@ -252,7 +309,7 @@ utilisation_and_cases_p <- ggplot(
   geom_text(
     aes(
       y = incore_cases,
-      label = incore_cases - noncore_cases
+      label = incore_cases - unscheduled_cases
     ),
     colour = '#264854',
     vjust = 1.8,
@@ -263,8 +320,8 @@ utilisation_and_cases_p <- ggplot(
   
   geom_text(
     aes(
-      y = noncore_cases,
-      label = ifelse(noncore_cases > 0, noncore_cases, '')
+      y = unscheduled_cases,
+      label = ifelse(unscheduled_cases > 0, unscheduled_cases, ''),
     ),
     colour = '#1A7B85',
     vjust = 1.8,
@@ -284,13 +341,28 @@ utilisation_and_cases_p <- ggplot(
     fontface = 'bold',
     size = 4
   ) +
+  
+  geom_label(
+    aes(
+      y = -10,
+      label = incore_cases
+    ),
+    # position = position_stack(vjust = 0.5),
+    colour = 'white',
+    fill = 'black',
+    vjust = 0.5,
+    hjust = 0.5,
+    fontface = 'bold',
+    size = 4,
+    label.padding = unit(0.01, "npc")
+  ) +
 
   scale_fill_manual( 
     name = '', 
     values = c(
-      'In-Core Cases' = '#249ea0',
+      'Sch Cases' = '#249ea0',
       'Out-of-Core Cases' = '#faab36',
-      'Non-Core Cases' = '#94EBCF',
+      'Unsch Cases' = '#94EBCF',
       'Cancelled Cases' = '#fd5901'
     )
   ) +
@@ -298,7 +370,8 @@ utilisation_and_cases_p <- ggplot(
   scale_color_manual( 
     name = '', 
     values = c(
-      '% In-Core Cases Utilisation' = '#249ea0',
+      '% In-Core Utilisation' = '#1A7B85',
+      '% Utilisation with Non-Core Time' = '#37D1B0',
       '% Total Utilisaiton' = '#faab36'
     )
   ) +
@@ -318,13 +391,13 @@ utilisation_and_cases_p <- ggplot(
     #   labels = scales::percent_format(scale = 100)),
     
     name = '',
-    breaks = seq(-5, 60, 5),
+    breaks = seq(lower_border, upper_border, 5),
     # minor_breaks = seq(
     #   min(utilisation_and_cases_df$cancelled_cases, na.rm = TRUE), 
     #   max(utilisation_and_cases_df$total_cases, na.rm = TRUE), 
     #   1
     # ),
-    limits = c(-5, 60)
+    limits = c(lower_border, upper_border)
   ) +
   
   

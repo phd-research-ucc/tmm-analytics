@@ -136,7 +136,7 @@ inter_op_interval_p <- ggplot(
       y = max_turnover,
       fill = 'Max turnover',
     ), 
-    alpha = 0.3,
+    alpha = 0.5,
     stat = 'identity'
   ) +
   
