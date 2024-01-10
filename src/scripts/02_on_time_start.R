@@ -81,7 +81,7 @@ on_time_start_p <- ggplot(
   geom_bar(
     aes(
       y = late_minutes, 
-      fill = 'Late mins'
+      fill = 'Mins Start Late'
     ), 
     stat = 'identity', 
     alpha = 0.7,
@@ -92,7 +92,7 @@ on_time_start_p <- ggplot(
   geom_bar(
     aes(
       y = early_minutes, 
-      fill = 'Early mins'
+      fill = 'Mins Start Early'
     ), 
     stat = 'identity', 
     alpha = 0.7,
@@ -167,8 +167,8 @@ on_time_start_p <- ggplot(
   scale_fill_manual( 
     name = '', 
     values = c(
-      'Late mins' = '#faab36',
-      'Early mins' = '#249ea0',
+      'Mins Start Late' = '#faab36',
+      'Mins Start Early' = '#249ea0',
       ''
     )
   ) +

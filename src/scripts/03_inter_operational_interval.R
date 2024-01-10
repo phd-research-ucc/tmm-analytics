@@ -33,6 +33,7 @@ source('scripts/01_read_and_prep.R')
 
 inter_op_interval_df <- prepared_df |> 
   filter(
+    is_incore_case,
     !is.na(anaesthetic_start), 
     !is.na(anaesthetic_finish)
   ) |> 
@@ -77,6 +78,7 @@ inter_op_interval_df <- prepared_df |>
     total_overlap = sum(total_overlap, na.rm = TRUE),
     total_lost = sum(total_lost, na.rm = TRUE),
     max_turnover = max(max_lost),
+    theatre_with_max_turnover = theatre[ which.max(max_lost) ],
     avg_turnover = round(
       as.numeric( total_lost / sum(num_cases) ),
       1
@@ -114,7 +116,7 @@ inter_op_interval_p <- ggplot(
   geom_bar(
     aes(
       y = total_lost, 
-      fill = 'Total turnover'
+      fill = 'Total IoI'
     ), 
     stat = 'identity', 
     alpha = 0.7,
@@ -134,7 +136,7 @@ inter_op_interval_p <- ggplot(
   geom_bar(
     aes(
       y = max_turnover,
-      fill = 'Max turnover',
+      fill = 'Max IoI',
     ), 
     alpha = 0.5,
     stat = 'identity'
@@ -149,10 +151,22 @@ inter_op_interval_p <- ggplot(
     stat = 'identity'
   ) +
   
+  geom_text(
+    aes(
+      y = max_turnover,
+      label = theatre_with_max_turnover,
+    ),
+    vjust = 1.5,
+    hjust = 0.5,
+    fontface = 'bold',
+    size = 5,
+    colour = '#FDE6C3'
+  ) +
+  
   geom_line(
     aes(
       y = avg_turnover, 
-      color = 'Avg turnover'
+      color = 'Avg IoI'
     ), 
     group = 1
   ) +
@@ -160,7 +174,7 @@ inter_op_interval_p <- ggplot(
   geom_point(
     aes(
       y = avg_turnover,
-      color = 'Avg turnover'
+      color = 'Avg IoI'
     ), 
     shape = 15, 
     size = 2,
@@ -171,12 +185,12 @@ inter_op_interval_p <- ggplot(
     aes(
       y = avg_turnover,
       label = avg_turnover,
-      color = 'Avg turnover'
+      color = 'Avg IoI'
     ),
     vjust = -0.75,
     hjust = 0.5,
     fontface = 'bold',
-    size = 2.5
+    size = 3
   ) +
   
   geom_text(
@@ -187,7 +201,7 @@ inter_op_interval_p <- ggplot(
     vjust = -1,
     hjust = 0.5,
     fontface = 'bold',
-    size = 3
+    size = 4
   ) +
   
   geom_text(
@@ -198,9 +212,10 @@ inter_op_interval_p <- ggplot(
     vjust = -0.25,
     hjust = 0.5,
     fontface = 'bold',
-    size = 3,
+    size = 4,
     colour = '#fd5901'
   ) +
+
   
   geom_text(
     aes(
@@ -210,7 +225,7 @@ inter_op_interval_p <- ggplot(
     vjust = 2,
     hjust = 0.5,
     fontface = 'bold',
-    size = 3,
+    size = 4,
     color = '#249ea0'
   ) +
   
@@ -219,9 +234,9 @@ inter_op_interval_p <- ggplot(
   scale_fill_manual( 
     name = '', 
     values = c(
-        'Total turnover' = '#faab36',
+        'Total IoI' = '#faab36',
         'Total overlap' = '#249ea0',
-        'Max turnover' = '#fd5901',
+        'Max IoI' = '#fd5901',
         'Max overlap' = '#7ADFE1'
       )
   ) +
@@ -229,8 +244,8 @@ inter_op_interval_p <- ggplot(
   scale_color_manual( 
     name = '', 
     values = c(
-      'Avg turnover' = '#521B00',
-      'Max turnover' = '#fd5901'
+      'Avg IoI' = '#521B00',
+      'Max IoI' = '#fd5901'
      )
   ) +
   

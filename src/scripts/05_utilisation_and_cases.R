@@ -238,7 +238,7 @@ geom_text(
   geom_point(
     aes(
       y = utilisation_with_noncore_time * percent_range + percent_start, 
-      color = '% Utilisation with Non-Core Time'
+      color = "% Utilisation inclusive of  Non-core cases with 'in core' time"
     ),
     shape = 19,
     size = 1
@@ -344,13 +344,30 @@ geom_text(
   
   geom_label(
     aes(
-      y = -10,
-      label = incore_cases
+      y = 0,
+      label = incore_cases,
+      color ='Total In-Core Cases'
     ),
     # position = position_stack(vjust = 0.5),
-    colour = 'white',
+    # colour = '#1A7B85',
+    vjust = 3,
+    hjust = 0.5,
+    fontface = 'bold',
+    size = 4,
+    label.padding = unit(0.01, "npc")
+  ) +
+  
+  geom_label(
+    aes(
+      y = 0,
+      label = total_cases,
+      fill = 'Total Cases',
+      color = 'Total Cases'
+    ),
+    # position = position_stack(vjust = 0.5),
+    # colour = 'white',
     fill = 'black',
-    vjust = 0.5,
+    vjust = 4.1,
     hjust = 0.5,
     fontface = 'bold',
     size = 4,
@@ -360,6 +377,7 @@ geom_text(
   scale_fill_manual( 
     name = '', 
     values = c(
+      'Total Cases' = 'black',
       'Sch Cases' = '#249ea0',
       'Out-of-Core Cases' = '#faab36',
       'Unsch Cases' = '#94EBCF',
@@ -370,8 +388,10 @@ geom_text(
   scale_color_manual( 
     name = '', 
     values = c(
+      'Total In-Core Cases' = '#1A7B85',
+      'Total Cases' = 'white',
       '% In-Core Utilisation' = '#1A7B85',
-      '% Utilisation with Non-Core Time' = '#37D1B0',
+      "% Utilisation inclusive of  Non-core cases with 'in core' time" = '#37D1B0',
       '% Total Utilisaiton' = '#faab36'
     )
   ) +
