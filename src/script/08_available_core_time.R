@@ -7,14 +7,14 @@
 #
 # Description:  Render Available Core Time Donut Chart
 #
-# Location:     scripts/08_available_core_time.R
+# Location:     script/08_available_core_time.R
 #
 
 
 
 # Setup the Script -------------------------------------------------------------
 
-source('scripts/07_summary_table.R')
+source('script/07_summary_table.R')
 
 
 

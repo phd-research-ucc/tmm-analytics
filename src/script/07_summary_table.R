@@ -7,15 +7,15 @@
 #
 # Description:  Summarise the data
 #
-# Location:     scripts/07_summary_table.R
+# Location:     script/07_summary_table.R
 #
 
 
 
 # Setup the Script -------------------------------------------------------------
 
-source('scripts/01_read_and_prep.R')
-source('scripts/05_utilisation_and_cases.R')
+source('script/01_read_and_prep.R')
+source('script/05_utilisation_and_cases.R')
 
 
 

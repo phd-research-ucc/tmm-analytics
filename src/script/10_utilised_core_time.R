@@ -5,16 +5,17 @@
 # Created on:   2023-12-22
 # Updated on:   2023-12-22
 #
-# Description:  Render Distribution Chart of Blocked Time
+# Description:  Render Chart for Core Time Utilisation Rate
 #
-# Location:     scripts/09_blocked_core_time.R
+# Location:     script/10_utilised_core_time.R
 #
 
 
 
 # Setup the Script -------------------------------------------------------------
 
-source('scripts/07_summary_table.R')
+source('script/07_summary_table.R')
+source('script/05_utilisation_and_cases.R')
 
 
 
@@ -22,34 +23,42 @@ source('scripts/07_summary_table.R')
 # Mine Needed Data -------------------------------------------------------------
 
 
-data <- adhoc_summary_table |> 
+data <- data.frame(
+  category = c('Utilised Core Time', 'Unused Core Time'),
+  time = c(
+    sum(utilisation_and_cases_df$total_incore_time),
+    sum(
+      utilisation_and_cases_df$total_core_time - 
+        utilisation_and_cases_df$total_incore_time
+    )
+  )
+) |> 
   mutate(
-    fraction = total_lost_time_m / sum(total_lost_time_m),
-    percent = paste0( floor(fraction * 1000) / 10 , '%' ),
+    fraction = time / sum(utilisation_and_cases_df$total_core_time),
     ymax = cumsum(fraction),
     ymin = c( 0, head(ymax, n = -1) ),
-    label_position = (ymax + ymin) / 2,
-    label = paste0(reason, ':\n', total_lost_time_h, ' hr')
-  ) |> 
-  rename(
-    time = total_lost_time_m,
-    label_time = total_lost_time_h
+    labelPosition = (ymax + ymin) / 2,
+    label = paste0(category, ':\n', floor(time / 60), ' hr'),
+    percent = paste0(
+      floor( as.integer(fraction * 1000) ) / 10, 
+      '%'
+    )
   )
 
 
 
 
-# Render Blocked Time Distribution Chart --------------------------------------
+# Render Chart for Core Time Utilisation Rate ---------------------------------------
 
 
-blocked_core_time_p <-ggplot(
+utilised_core_time_p <- ggplot(
     data, 
     aes(
       ymax = ymax, 
       ymin = ymin, 
       xmax = 4, 
       xmin = 2, 
-      fill = reason
+      fill = category
     )
   ) +
   
@@ -60,7 +69,7 @@ blocked_core_time_p <-ggplot(
   geom_label(
     x = 3.5,
     aes(
-      y = label_position,
+      y = labelPosition,
       label = percent
     ),
     size = 3,
@@ -71,15 +80,13 @@ blocked_core_time_p <-ggplot(
   
   scale_fill_manual(
     values = c(
-      'Planned Closure' = '#2DC5C8',
-      'Ring-Fenced' = '#faab36',
-      'Cancelled List' = '#FD5901',
-      'Other Use' = '#995D81'
+      'Unused Core Time' = '#FD5901',
+      'Utilised Core Time' = '#2DC5C8'
     )
   ) +
   
   labs(
-    title = 'Blocked Core Time Distribution', 
+    title = 'Core Time Utilisation', 
     x = '', 
     y = '',
     fill = ''
@@ -95,17 +102,21 @@ blocked_core_time_p <-ggplot(
 # Clean Up ---------------------------------------------------------------------
 
 remove(
-  utilised_core_time_p,
   adhoc_summary_table,
+  clean_data_df,
+  data,
   summary_df,
-  data
+  theatre_adhocs_df,
+  theatre_core_time_df,
+  utilisation_and_cases_df,
+  utilisation_and_cases_p
 )
 
 
 
 # Display the Plot -------------------------------------------------------------
 
-blocked_core_time_p
+utilised_core_time_p
 
 
 

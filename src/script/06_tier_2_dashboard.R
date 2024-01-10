@@ -12,17 +12,17 @@
 #                 - Early Finish/ Over Run
 #                 - Utilisation Rate and Number of Surgery Cases
 #
-# Location:     scripts/06_tier_2_dashboard.R
+# Location:     script/06_tier_2_dashboard.R
 #
 
 
 
 # Setup the Script -------------------------------------------------------------
 
-source('scripts/02_on_time_start.R')
-source('scripts/03_inter_operational_interval.R')
-source('scripts/04_early_finish_and_over_run.R')
-source('scripts/05_utilisation_and_cases.R')
+source('script/02_on_time_start.R')
+source('script/03_inter_operational_interval.R')
+source('script/04_early_finish_and_over_run.R')
+source('script/05_utilisation_and_cases.R')
 
 
 

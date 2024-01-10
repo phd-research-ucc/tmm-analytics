@@ -15,14 +15,14 @@
 #               Time span - 4 weeks.
 #               X axis stands for weeks
 #
-# Location:     scripts/04_early_finish_and_over_run.R
+# Location:     script/04_early_finish_and_over_run.R
 #
 
 
 
 # Setup the Script -------------------------------------------------------------
 
-source('scripts/01_read_and_prep.R')
+source('script/01_read_and_prep.R')
 
 
 

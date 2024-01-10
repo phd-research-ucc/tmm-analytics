@@ -7,7 +7,7 @@
 #
 # Description:  The file contains custom functions for this project
 #
-# Location:     scripts/_dev.R
+# Location:     script/_dev.R
 #
 
 

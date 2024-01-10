@@ -1,14 +1,14 @@
 # Meta Data --------------------------------------------------------------------
 #
-# Version:      1.0
+# Version:      1.1
 # Author:       Oleksii Dovhaniuk
 # Created on:   2023-12-13
-# Updated on:   2023-12-13
+# Updated on:   2024-01-10
 #
 # Description:  The script reads and prepares data for 
 #               further analysis and plotting
 #
-# Location:     scripts/01_read_and_prep.R
+# Location:     script/01_read_and_prep.R
 #
 
 
@@ -17,10 +17,10 @@
 
 
 # load packages
-source('scripts/_load_packages.R')
+source('script/_load_packages.R')
 
 # load custom functions
-source('scripts/_functions.R')
+source('script/_functions.R')
 
 
 

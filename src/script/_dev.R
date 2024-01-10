@@ -11,12 +11,12 @@
 #               
 #               It should not be used for knitting the reports!!!
 #
-# Location:     scripts/_dev.R
+# Location:     script/_dev.R
 #
 
 # Load Packages ----------------------------------------------------------------
 
-source('scripts/_load_packages.R')
+source('script/_load_packages.R')
 
 
 

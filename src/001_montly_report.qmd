@@ -13,14 +13,14 @@ project:
 
 ```{r, include=FALSE}
 
-source('scripts/06_tier_2_dashboard.R', local = knitr::knit_global())
-source('scripts/11_tier_3_summary.R', local = knitr::knit_global())
+source('script/06_tier_2_dashboard.R', local = knitr::knit_global())
+source('script/11_tier_3_summary.R', local = knitr::knit_global())
 ```
 
 # **Summary - Tier 3 (All Theatres)**
 
 ```{r}
-source('scripts/07_summary_table.R', local = knitr::knit_global())
+source('script/07_summary_table.R', local = knitr::knit_global())
 weeks_and_dates <- summary_df |> 
   head(2) |> 
   rename(
@@ -41,7 +41,7 @@ tier_3_summary
 *(Using current core time)*
 
 ```{r}
-source('scripts/07_summary_table.R', local = knitr::knit_global())
+source('script/07_summary_table.R', local = knitr::knit_global())
 
 capacity <- summary_df[3:6, 1, drop = FALSE] |> 
   t() |> 
@@ -79,8 +79,8 @@ knitr::kable(utilisation_and_cases)
 ```{r}
 #| label: on_time_start
 
-source('scripts/02_on_time_start.R', local = knitr::knit_global())
-source('scripts/04_early_finish_and_over_run.R', local = knitr::knit_global())
+source('script/02_on_time_start.R', local = knitr::knit_global())
+source('script/04_early_finish_and_over_run.R', local = knitr::knit_global())
 
 on_time_start_p + early_finish_over_run_p
 ```
@@ -88,7 +88,7 @@ on_time_start_p + early_finish_over_run_p
 ```{r}
 #| label: inter_op_interval
 
-source('scripts/03_inter_operational_interval.R', local = knitr::knit_global())
+source('script/03_inter_operational_interval.R', local = knitr::knit_global())
 
 inter_op_interval_p
 ```
@@ -96,7 +96,7 @@ inter_op_interval_p
 ```{r}
 #| label: utilisation_and_cases
 
-source('scripts/05_utilisation_and_cases.R', local = knitr::knit_global())
+source('script/05_utilisation_and_cases.R', local = knitr::knit_global())
 
 utilisation_and_cases_p
 ```

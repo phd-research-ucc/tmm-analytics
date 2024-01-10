@@ -15,14 +15,14 @@
 #               Time span - 4 weeks.
 #               X axis stands for weeks.
 #
-# Location:     scripts/02_on_time_start.R
+# Location:     script/02_on_time_start.R
 #
 
 
 
 # Setup the Script -------------------------------------------------------------
 
-source('scripts/01_read_and_prep.R')
+source('script/01_read_and_prep.R')
 
 
 

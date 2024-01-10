@@ -9,7 +9,7 @@
 #               the TMM Analysis project if the R and Rstudio are
 #               freshly installed.
 #
-# Location:     scripts/_install_packages.R
+# Location:     script/_install_packages.R
 #
 
 
@@ -19,3 +19,7 @@ install.packages("tidyverse")
 install.packages("ggplot2")
 install.packages("lubridate")
 install.packages("glue")
+install.packages("plumber")
+install.packages("devtools")
+install.packages("Rook")
+install.packages("readxl")

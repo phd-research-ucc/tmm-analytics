@@ -10,16 +10,16 @@
 #                 - Blocked Core Time Distribution;
 #                 - Core Time Utilisation.
 #
-# Location:     scripts/11_tier_3_summary.R
+# Location:     script/11_tier_3_summary.R
 #
 
 
 
 # Setup the Script -------------------------------------------------------------
 
-source('scripts/08_available_core_time.R')
-source('scripts/09_blocked_core_time.R')
-source('scripts/10_utilised_core_time.R')
+source('script/08_available_core_time.R')
+source('script/09_blocked_core_time.R')
+source('script/10_utilised_core_time.R')
 
 
 

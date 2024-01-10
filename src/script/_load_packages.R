@@ -9,7 +9,7 @@
 #               the TMM Analysis project. Can be called 
 #               from any other job script.
 #
-# Location:     scripts/_load_packages.R
+# Location:     script/_load_packages.R
 #
 
 
@@ -20,6 +20,8 @@ library(lubridate)
 library(patchwork)
 library(ggplot2)
 library(glue)
-
+library(plumber)
+library(Rook)
+library(xlsx)
 
 
