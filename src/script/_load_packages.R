@@ -1,9 +1,9 @@
 # Meta Data ---------------------------------------------------------------
 #
-# Version:      1.0
+# Version:      1.1
 # Author:       Oleksii Dovhaniuk
 # Created on:   2023-12-13
-# Updated on:   2023-12-22
+# Updated on:   2024-01-12
 #
 # Description:  This script loads all required packages for
 #               the TMM Analysis project. Can be called 
@@ -23,5 +23,6 @@ library(glue)
 library(plumber)
 library(Rook)
 library(xlsx)
+library(readxl)
 
 
