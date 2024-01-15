@@ -8,6 +8,8 @@ services:
             - .env
         ports:
             - 8787:8787
+        environment:
+            - LOCALHOST_URL=http://localhost:8080/tmm-analytics
         volumes:
             - ./src/:/home/rstudio/src/
             - rlib:/usr/local/lib/R

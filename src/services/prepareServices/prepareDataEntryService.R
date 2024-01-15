@@ -2,12 +2,12 @@
 #
 # Version:      1.1
 # Author:       Oleksii Dovhaniuk
-# Created on:   2024-01-10
-# Updated on:   2024-01-10
+# Created on:   2024-01-15
+# Updated on:   2024-01-15
 #
-# Description:  Clean the Data Entry data sheet.
+# Description:  Reads the demo Manage Theatres data sheet form CSV or Excel file.
 #
-# Location:     services/prepareServices/prepareDataEntryServices/cleanDataEntryService.R
+# Location:     services/prepareServices/prepareDataEntryService.R
 #
 
 
