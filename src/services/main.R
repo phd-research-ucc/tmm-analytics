@@ -53,18 +53,19 @@ function(type='xlsx') {
 
 
 #* Prepares Data Entry and Mng Theatre data for further analysis
-#* @get /prepare/inputs
+#* @get /prepare/prep-data
 function() {
   library(jsonlite)
 
-
-  source('fileServices/readDemoManageTheatresService.R')
-  mng_theatres_json <- readDemoManageTheatresService()
   source('fileServices/readDemoDataEntryService.R')
   mng_dataentry_json <- readDemoDataEntryService()
-  source('prepareSercives/prepManageTheatresService.R')
-  source('prepareSercives/prepDataEntryService.R')
-
+  source('fileServices/readDemoManageTheatresService.R')
+  mng_theatres_json <- readDemoManageTheatresService()
+  source('prepareServices/prepareDataService.R')
+  prepareDataService(
+    fromJSON(mng_dataentry_json),
+    fromJSON(mng_theatres_json)
+  )
 }
 
 

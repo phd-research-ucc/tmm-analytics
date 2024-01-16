@@ -20,6 +20,7 @@ readDemoDataEntryService <- function(type='xlsx'){
   library(readxl)
 
   base_path <- '../data/demo/'
+  base_path <- 'data/demo/'
 
   if (type == 'csv'){
     file <- paste0(base_path, 'demo_data_entry.csv')

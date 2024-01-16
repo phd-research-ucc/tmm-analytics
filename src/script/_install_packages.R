@@ -18,15 +18,16 @@
 
 install.packages(
     c(  
-        'tidyverse',
-        'ggplot2',
-        'lubridate',
-        'glue',
-        'plumber',
         'devtools',
-        'Rook',
-        'readxl',
+        'ggplot2',
+        'janitor',
+        'jsonlite',
         'httr', 
-        'jsonlite'
+        'glue',
+        'lubridate',
+        'plumber',
+        'readxl',
+        'Rook',
+        'tidyverse'
     )
 )

@@ -19,6 +19,7 @@ readDemoManageTheatresService <- function(type='xlsx'){
   library(readxl)
   
   base_path <- '../data/demo/'
+  base_path <- 'data/demo/'
   
   if (type == 'csv'){
     file <- paste0(base_path, 'demo_mng_theatres.csv')
@@ -31,6 +32,6 @@ readDemoManageTheatresService <- function(type='xlsx'){
   } else {
     file <- paste0(base_path, 'demo_tmm.xlsx')
   }
-  result <- read_excel(file, sheet = 'Mng Theatres')
+  result <- read_excel(file, sheet = 'Mng Theatres', skip = 5)
   return(result)
 }
