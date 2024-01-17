@@ -22,6 +22,7 @@ prepareDataService <- function(
 
   library(tidyverse)
   library(lubridate)
+  library(hms)
   library(janitor)
   library(glue)
 
@@ -323,6 +324,21 @@ prepareDataService <- function(
   # return(prepared_df)
 }
 
+
+# Functions ---------------------------------------------------------------
+
+character_to_hms <- function(character_hms){
+  character_hms <- case_when(
+    is.na(character_hms) ~ '00:00:00',
+    TRUE ~ character_hms
+  )
+  
+  time <- lubridate::hms(character_hms) |> 
+    round()
+  
+  hms::hms(time)
+}
+
 library(tidyverse)
 library(lubridate)
 library(janitor)
@@ -362,7 +378,7 @@ theatre_timetable_df <- mng_theatres_df |>
   select(
     day,
     th_open,
-    th_close
+    th_close,
   )  |>
   
   filter( !is.na(day) ) |> 
@@ -375,17 +391,20 @@ theatre_timetable_df <- mng_theatres_df |>
 
   mutate(
     weekday = as.factor(weekday),
-    theatre_open = ifelse(
-      nchar(theatre_open) > 8,
-      hms(theatre_open),
-      hms('00:00:00', 'HMS')
+    theatre_open = case_when(
+      grepl(':', theatre_open) ~ character_to_hms(theatre_open),
+      TRUE ~ character_to_hms('00:00:00')
     ),
-    theatre_close =
-      ifelse(
-        nchar(theatre_close) > 8,
-        hms(theatre_close),
-        hms('00:00:00', 'HMS')
-      )
+    theatre_close = case_when(
+      grepl(':', theatre_close) ~ character_to_hms(theatre_close),
+      TRUE ~ character_to_hms('00:00:00')
+    ),
+    theatre_open_min = as.integer(
+      difftime(
+        theatre_close, 
+        theatre_open,
+        units = "mins")
+    )
   )
 
 theatre_timetable_df
@@ -401,28 +420,56 @@ theatre_adhocs_df <- mng_theatres_df |>
     pm_close,
     reason,
     staffed,
-    un_staffed,
-    ring_fenced,
-    planned_closure,
-    cancel_list,
-    other_use,
-    am_time,
-    pm_time
+    un_staffed
+    # ring_fenced,
+    # planned_closure,
+    # cancel_list,
+    # other_use,
+    # am_time,
+    # pm_time
   )  |>
   
   filter( !is.na(theatre_11) ) |> 
   
   rename(
-    theatre_id = theatre_11
+    theatre_id = theatre_11,
+    staffed_min = staffed,
+    unstaffed_min = un_staffed
   ) |> 
   
   mutate(
-    theatre_id = as.factor(theatre_id)
+    theatre_id = as.factor(theatre_id),
+    date = as.Date(date),
+    weekday = format(date, '%a'),
+    reason = as.factor(reason),
+    am_open = character_to_hms(am_open),
+    am_close = character_to_hms(am_close),
+    pm_open = character_to_hms(pm_open),
+    pm_close = character_to_hms(pm_close)
+  ) |> 
+  
+  pivot_longer(
+    cols = c('am_open', 'am_close', 'pm_open', 'pm_close'), 
+    names_to = c('time_of_day', '.value'), 
+    names_sep = '_'
+  ) |> 
+  
+  mutate(
+    weekday = factor(
+      weekday,
+      levels = c('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
+    ),
+    time_of_day = as.factor(time_of_day),
+    time_min = as.integer(
+      difftime(close, open, unit = 'mins')
+    )
   )
   
   
   
-  
+str(theatre_adhocs_df)
+View(theatre_adhocs_df)
+
 
 
 
