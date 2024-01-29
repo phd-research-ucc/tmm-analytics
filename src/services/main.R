@@ -3,7 +3,7 @@
 # Version:      1.1
 # Author:       Oleksii Dovhaniuk
 # Created on:   2024-01-11
-# Updated on:   2024-01-15
+# Updated on:   2024-01-18
 #
 # Description:  Combines all services of the project
 #               into one API collection.
@@ -53,17 +53,25 @@ function(type='xlsx') {
 
 
 #* Prepares Data Entry and Mng Theatre data for further analysis
+#* @param data_entry_file path to the data entry file
+#* @param mng_theatres_file path to the manage theatres file
 #* @get /prepare/prep-data
-function() {
+function(data_entry_file = NA, mng_theatres_file = NA) {
   library(jsonlite)
+  
+  if ( is.na(mng_theatres_file) ){
+    source('fileServices/readDemoManageTheatresService.R')
+    mng_theatres_json <- readDemoManageTheatresService()
+  }
 
-  source('fileServices/readDemoDataEntryService.R')
-  mng_dataentry_json <- readDemoDataEntryService()
-  source('fileServices/readDemoManageTheatresService.R')
-  mng_theatres_json <- readDemoManageTheatresService()
+  if ( is.na(data_entry_file) ){
+    source('fileServices/readDemoDataEntryService.R')
+    data_entry_json <- readDemoDataEntryService()
+  }
+
   source('prepareServices/prepareDataService.R')
   prepareDataService(
-    fromJSON(mng_dataentry_json),
+    fromJSON(data_entry_json),
     fromJSON(mng_theatres_json)
   )
 }
