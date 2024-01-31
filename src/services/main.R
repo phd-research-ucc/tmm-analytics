@@ -16,13 +16,17 @@
 
 # Setup Plumber --------------------------------------------------------
 
+library(jsonlite)
 
 options('plumber.port' = 8080)
+DEMO_DATA_ENTRY_PATH <- 'fileServices/readDemoDataEntryService.R'
+DEMO_MANAGE_THEATRE_PATH <- 'fileServices/readDemoManageTheatresService.R'
 
 
 
 
 # Connecting to Plumber --------------------------------------------------------
+
 
 #* Health Check - Is the API running
 #* @get /health-check
@@ -34,11 +38,16 @@ statue <- function(){
 } 
 
 
+
+
+# File Services ----------------------------------------------------------------
+
+
 #* Reads demo Data Entry sheet from file end returns data frame
 #* @param type 'csv', 'xls', or 'xlsx' (by default - 'xlsx')
 #* @get /file/read-demo-data-entry
 function(type='xlsx') {
-  source('fileServices/readDemoDataEntryService.R')
+  source(DEMO_DATA_ENTRY_PATH)
   readDemoDataEntryService(type)
 }
 
@@ -47,48 +56,95 @@ function(type='xlsx') {
 #* @param type 'csv', 'xls', or 'xlsx' (by default - 'xlsx')
 #* @get /file/read-demo-mng-theatre
 function(type='xlsx') {
-  source('fileServices/readDemoManageTheatresService.R')
+  source(DEMO_MANAGE_THEATRE_PATH)
   readDemoManageTheatresService(type)
 }
 
 
-#* Prepares Data Entry and Mng Theatre data for further analysis
-#* @param data_entry_file path to the data entry file
-#* @param mng_theatres_file path to the manage theatres file
-#* @get /prepare/prep-data
-function(data_entry_file = NA, mng_theatres_file = NA) {
-  library(jsonlite)
+
+
+# Data Services ----------------------------------------------------------------
+
+
+#* Exstracts and clears theatre names data frame from the mng_theatre_df
+#* @param file path to the excel file
+#* @get /data/get-theatre-names
+function(file = NA) {
+
+  if ( is.na(file) ) {
+    source(DEMO_MANAGE_THEATRE_PATH)
+    mng_theatres_df <- readDemoManageTheatresService()
+  }
   
-  if ( is.na(mng_theatres_file) ){
-    source('fileServices/readDemoManageTheatresService.R')
-    mng_theatres_json <- readDemoManageTheatresService()
+  source('dataServices/getTheatreNamesService.R')
+  get_theatre_names(mng_theatres_df)
+}
+
+
+#* Exstracts and clears theatre timetables data frame from the mng_theatre_df
+#* @param file path to the excel file
+#* @get /data/get-theatre-timetables
+function(file = NA) {
+
+  if ( is.na(file) ) {
+    source(DEMO_MANAGE_THEATRE_PATH)
+    mng_theatres_df <- readDemoManageTheatresService()
   }
 
-  if ( is.na(data_entry_file) ){
-    source('fileServices/readDemoDataEntryService.R')
-    data_entry_json <- readDemoDataEntryService()
+  source('dataServices/getTheatreTimetablesService.R')
+  get_theatre_timetables(mng_theatres_df)
+}
+
+
+#* Exstracts and clears theatre ad-hocs data frame from the mng_theatre_df
+#* @param file path to the excel file
+#* @get /data/get-theatre-adhocs
+function(file = NA) {
+
+  if ( is.na(file) ) {
+    source(DEMO_MANAGE_THEATRE_PATH)
+    mng_theatres_df <- readDemoManageTheatresService()
   }
 
-  source('prepareServices/prepareDataService.R')
-  prepareDataService(
-    fromJSON(data_entry_json),
-    fromJSON(mng_theatres_json)
-  )
+  source('dataServices/getTheatreAdhocsService.R')
+  get_theatre_adhocs(mng_theatres_df)
 }
 
 
-#* @get /apiA
-function(){
-    response <- httr::GET("http://localhost:8080/apiB")
-    content <- httr::content(response, "text")
-    return(list(result = content, message = "API A Response"))
+#* Exstracts and clears the data entry data frame 
+#* from the data_entry_df.
+#* @param file path to the excel file
+#* @get /data/get-data-entry
+function(file = NA) {
+
+  if ( is.na(file) ) {
+    source(DEMO_DATA_ENTRY_PATH)
+    data_entry_df <- readDemoDataEntryService()
+  }
+
+  source('dataServices/getDataEntryService.R')
+  get_data_entry(data_entry_df)
 }
 
 
-#* @get /apiB
-function(){
-    return(list(message = "API B Response"))
+
+#* Prepare data for On Time Start Plot.
+#* 
+#* @param file path to the excel file
+#* @get /data/get-data-entry
+function(file = NA) {
+
+  if ( is.na(file) ) {
+    source(DEMO_DATA_ENTRY_PATH)
+    data_entry_df <- readDemoDataEntryService()
+  }
+
+  source('dataServices/getDataEntryService.R')
+  get_data_entry(data_entry_df)
 }
+
+
+
 
 
 # Cleanup ----------------------------------------------------------------------

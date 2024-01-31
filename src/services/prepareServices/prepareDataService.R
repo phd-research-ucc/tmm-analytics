@@ -3,7 +3,7 @@
 # Version:      1.1
 # Author:       Oleksii Dovhaniuk
 # Created on:   2024-01-15
-# Updated on:   2024-01-18
+# Updated on:   2024-01-31
 #
 # Description:  Prepares data for further analysis and plotting.
 #
@@ -46,7 +46,7 @@ character_to_hms <- function(character_hms){
 
 
 
-source('services/fileServices/readDemoManageTheatresService.R')
+sourcex('services/fileServices/readDemoManageTheatresService.R')
 mng_theatres_df <- readDemoManageTheatresService()
 
 
@@ -185,29 +185,29 @@ theatre_adhocs_df <- mng_theatres_df |>
 
 # Clean Data Entry Data Sheet --------------------------------------------------
 
-source('services/fileServices/readDemoDataEntryService.R')
-data_entry_df <- readDemoDataEntryService() |> 
-  janitor::clean_names() |> 
-  mutate(
-    # original data fields
-    theatre = as.factor(theatre),
-    case_type = as.factor(case_type),
-    specialty = as.factor(specialty),
-    surgery_status = as.factor(surgery_status),
-    surgery_start_date = lubridate::ymd(surgery_start_date),
-    anaesthetic_start = character_to_hms(anaesthetic_start),
-    surgery_start = character_to_hms(surgery_start),
-    surgery_finish = character_to_hms(surgery_finish),
-    anaesthetic_finish = character_to_hms(anaesthetic_finish),
-    left_theatre = character_to_hms(left_theatre),
-    surgery_end_date = lubridate::ymd(surgery_end_date),
-    weekday = format(surgery_start_date, '%a')
+# source('services/fileServices/readDemoDataEntryService.R')
+# data_entry_df <- readDemoDataEntryService() |> 
+#   janitor::clean_names() |> 
+#   mutate(
+#     # original data fields
+#     theatre = as.factor(theatre),
+#     case_type = as.factor(case_type),
+#     specialty = as.factor(specialty),
+#     surgery_status = as.factor(surgery_status),
+#     surgery_start_date = lubridate::ymd(surgery_start_date),
+#     anaesthetic_start = character_to_hms(anaesthetic_start),
+#     surgery_start = character_to_hms(surgery_start),
+#     surgery_finish = character_to_hms(surgery_finish),
+#     anaesthetic_finish = character_to_hms(anaesthetic_finish),
+#     left_theatre = character_to_hms(left_theatre),
+#     surgery_end_date = lubridate::ymd(surgery_end_date),
+#     weekday = format(surgery_start_date, '%a')
     
-    # data fields from manage theatres data frame
+#     # data fields from manage theatres data frame
     
-  ) |> 
-  select(
-    -comment
+#   ) |> 
+#   select(
+#     -comment
   )
 
 
