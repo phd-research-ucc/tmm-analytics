@@ -29,11 +29,11 @@ source('script/_functions.R')
 
 
 entry_data_df <- read.csv(
-  'data/raw/2023-12-08_tmm_1month_1hospital_data_entry.csv'
+  'data/demo/demo_data_entry.csv'
 )
 
 mng_theatres_df <- read.csv(
-  'data/raw/2023-12-08_tmm_1month_1hospital_mng_theatres.csv'
+  'data/demo/demo_mng_theatres.csv'
 )
 
 
