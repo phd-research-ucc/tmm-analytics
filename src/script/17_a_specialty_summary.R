@@ -63,7 +63,7 @@ get_a_specialty_summary_pl <- function(target_specialty){
   return(a_specialty_summary_pl)
 }
 
-get_a_specialty_summary_pl("427")
+get_a_specialty_summary_pl("388")
 
 
 
