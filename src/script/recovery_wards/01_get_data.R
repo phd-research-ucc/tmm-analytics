@@ -26,7 +26,7 @@ library(hms)
 
 
 seconds_to_hms <- function(char_seconds){
-  as.hms(
+  as_hms(
     round(
       as.numeric(char_seconds) * 24 * 3600
       )
@@ -70,17 +70,17 @@ get_data_entry <- function(file){
       specialty = as.factor(specialty),
       surgery_status = as.factor(surgery_status),
       surgery_start_date = as.Date(surgery_start_date),
-      patient_called = as_datetime(patient_called),
-      arrival = as_datetime(arrival),
-      into_th_or_ar = as_datetime(into_th_or_ar),
-      anaesthetic_start = as_datetime(anaesthetic_start),
-      surgery_start = as_datetime(surgery_start),
-      surgery_finish = as_datetime(surgery_finish),
-      anaesthetic_finish = as_datetime(anaesthetic_finish),
-      left_theatre = as_datetime(left_theatre),
+      patient_called = as_hms(patient_called),
+      arrival = as_hms(arrival),
+      into_th_or_ar = as_hms(into_th_or_ar),
+      anaesthetic_start = as_hms(anaesthetic_start),
+      surgery_start = as_hms(surgery_start),
+      surgery_finish = as_hms(surgery_finish),
+      anaesthetic_finish = as_hms(anaesthetic_finish),
+      left_theatre = as_hms(left_theatre),
       bay = as.factor(bay),
-      ward_called = (ward_called),
-      out_of_recov = as_datetime(out_of_recov),
+      ward_called = as_hms(ward_called),
+      out_of_recov = as_hms(out_of_recov),
       surgery_end_date = as.Date(surgery_end_date)
     )
   
@@ -211,14 +211,24 @@ get_recovery_adhocs <- function(file){
     )
 }
 
-tmm_01 <- "src/data/raw/2024-08-09/2023-12-09_tmm-charts-example.xls"
-tmm_02 <- "src/data/raw/2024-08-09/Annonmysed_37-40_v2_8_anon.xls"
-tmm_03 <- "src/data/raw/2024-08-09/Annonmysed_41-44_v2_8_anon.xls"
-tmm_04 <- "src/data/raw/2024-08-09/Annonmysed_49-52_v2_8_anon.xls"
+get_data <- function(file){
+  return(
+    list(
+      data_entry = get_data_entry(file),
+      theatres = get_theatres(file),
+      theatre_core_time = get_theatre_core_time(file),
+      theatre_adhocs = get_theatre_adhocs(file),
+      recovery_wards = get_recovery_wards(file),
+      recovery_core_time = get_recovery_core_time(file),
+      recovery_adhocs = get_recovery_adhocs(file)
+    )
+  )
+}
 
-View(get_recovery_adhocs(tmm_01))
 
-
-
-
-
+# tmm_01 <- "src/data/raw/2024-08-09/2023-12-09_tmm-charts-example.xls"
+# tmm_02 <- "src/data/raw/2024-08-09/Annonmysed_37-40_v2_8_anon.xls"
+# tmm_03 <- "src/data/raw/2024-08-09/Annonmysed_41-44_v2_8_anon.xls"
+# tmm_04 <- "src/data/raw/2024-08-09/Annonmysed_49-52_v2_8_anon.xls"
+# 
+# View(get_recovery_adhocs(tmm_01))
