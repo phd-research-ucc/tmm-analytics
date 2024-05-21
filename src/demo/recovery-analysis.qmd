@@ -1,0 +1,42 @@
+---
+title: "TMM Recovery Analysis"
+author: "Oleksii Dovhaniuk"
+format: revealjs
+editor: visual
+---
+
+## Recovery Bay Summary
+
+```{r}
+library(ggplot2)
+library(plotly)
+
+data <- data.frame(
+  Category = c("A", "B", "C", "D"),
+  Value = c(10, 23, 15, 8)
+)
+
+p <- ggplot(data, aes(x = Category, y = Value)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Simple Bar Chart",
+       x = "Category",
+       y = "Value")
+
+ggplotly(p)
+```
+
+## Bullets
+
+When you click the **Render** button a document will be generated that includes:
+
+-   Content authored with markdown
+-   Output from executable code
+
+## Code
+
+When you click the **Render** button a presentation will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```

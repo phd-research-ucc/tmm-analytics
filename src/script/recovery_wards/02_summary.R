@@ -7,7 +7,7 @@
 #
 # Description:  The summary analysis of recovery ward data for a month.
 #
-# Location:     script/recovery_wards/02_summary.R
+# Location:     ~/src/script/recovery_wards/02_summary.R
 #
 
 
@@ -18,7 +18,7 @@ library(ggplot2)
 lhms <- lubridate::hms
 
 # tmm_01 <- "src/data/raw/2024-08-09/2023-12-09_tmm-charts-example.xls"
-# tmm_02 <- "src/data/raw/2024-08-09/Annonmysed_37-40_v2_8_anon.xls"
+tmm_02 <- "src/data/raw/2024-08-09/Annonmysed_37-40_v2_8_anon.xls"
 # tmm_03 <- "src/data/raw/2024-08-09/Annonmysed_41-44_v2_8_anon.xls"
 # tmm_04 <- "src/data/raw/2024-08-09/Annonmysed_49-52_v2_8_anon.xls"
 
@@ -54,6 +54,8 @@ get_recovery_summary <- function(file){
   source('~/src/script/recovery_wards/01_get_data.R')
   source('~/src/script/recovery_wards/03_recovery_time_scatter_plots.R')
   source('~/src/script/recovery_wards/04_durations_by_bay.R')
+  source('~/src/script/recovery_wards/05_utilisation_by_bay.R')
+  source('~/src/script/recovery_wards/06_utilisation_by_dates.R')
   
   df <- get_data(file)
   
@@ -76,11 +78,34 @@ get_recovery_summary <- function(file){
   
   df$data_entry <- data_entry_df
 
-  df
+  # str(df$data_entry)
   
   # View(df$data_entry)
   
-  get_durations_pl(data_entry_df)
+  # get_durations_pl(data_entry_df)
+  # cases_by_bay_pl <- get_cases_by_bay_pl(df$data_entry)
+  # utilisation_by_bay_pl <- get_utilisation_by_bay_pl(df)
+  # 
+  # recovery_summary_pl <- ggarrange(
+  #     cases_by_bay_pl,
+  #     utilisation_by_bay_pl,
+  #     labels = c("A", "B"),
+  #     ncol = 1, 
+  #     nrow = 2
+  #   )
+  
+  cases_by_dates_pl <- get_cases_by_dates_pl(df$data_entry)
+  utilisation_by_dates_pl <- get_utilisation_by_dates_pl(df)
+  
+  recovery_summary_pl <- ggarrange(
+    cases_by_dates_pl,
+    utilisation_by_dates_pl,
+      labels = c("A", "B"),
+      ncol = 1, 
+      nrow = 2
+    )
+
+  return(recovery_summary_pl)
   # get_recovery_time_with_dependency_pl(data_entry_df, "anaesthetic_time", "bay")
   # get_recovery_time_with_dependency_pl(data_entry_df, "anaesthetic_recovery_time", "bay")
   # get_recovery_time_with_dependency_pl(data_entry_df, "knife_to_skin_time", "bay")
@@ -89,9 +114,7 @@ get_recovery_summary <- function(file){
 
 }
 
-
-
-get_recovery_summary(tmm_02)
+# get_recovery_summary(tmm_02)
 # View(df$data_entry)
 
 # source('~/src/script/recovery_wards/01_get_data.R')
