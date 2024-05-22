@@ -7,7 +7,7 @@
 #
 # Description:  Retrieves and prepares on recovery wards data for analysis.
 #
-# Location:     script/recovery_wards/01_get_data.R
+# Location:     ~/src/script/recovery_wards/01_get_data.R
 #
 
 
@@ -18,6 +18,7 @@ library(readxl)
 library(janitor)
 library(tidyverse)
 library(hms)
+library(lubridate)
 
 
 
@@ -33,7 +34,23 @@ seconds_to_hms <- function(char_seconds){
     )
 }
 
+to_ymd_hms <- function(start_date, current_time, previous_time){
+  
+  is_next_day = current_time < previous_time;
+  time <- format(current_time, "%H:%M:%S");
+  date <- case_when(
+    is_next_day ~ as.Date(start_date) + 1,
+    .default = as.Date(start_date)
+  );
+  
+  return(ymd_hms(paste(date, time)))
+}
 
+# start_date = as.POSIXct("2024-05-21 00:00:01");
+# current_time = as.POSIXct("1990-01-01 10:20:40");
+# previous_time = as.POSIXct("1990-01-01 10:20:50");
+# 
+# to_ymd_hms(start_date, current_time, previous_time)
 
 # Read the XLS File ------------------------------------------------------------
 
@@ -43,46 +60,69 @@ get_data_entry <- function(file){
   
   data_entry <- read_excel(file, sheet = 'Data Entry') |> 
     clean_names() |> 
-    select(
-      "theatre",
-      "surgeon",
-      "case_type",
-      "specialty",
-      "surgery_status",
-      "surgery_start_date",
-      "patient_called",
-      "arrival",
-      "into_th_or_ar",
-      "anaesthetic_start",
-      "surgery_start",
-      "surgery_finish",
-      "anaesthetic_finish",
-      "left_theatre",
-      "bay",
-      "ward_called",
-      "out_of_recov",
-      "surgery_end_date"
-    ) |> 
     mutate(
       theatre = as.factor(theatre),
       surgeon = as.factor(surgeon),
       case_type = as.factor(case_type),
       specialty = as.factor(specialty),
       surgery_status = as.factor(surgery_status),
-      surgery_start_date = as.Date(surgery_start_date),
-      patient_called = as_hms(patient_called),
-      arrival = as_hms(arrival),
-      into_th_or_ar = as_hms(into_th_or_ar),
-      anaesthetic_start = as_hms(anaesthetic_start),
-      surgery_start = as_hms(surgery_start),
-      surgery_finish = as_hms(surgery_finish),
-      anaesthetic_finish = as_hms(anaesthetic_finish),
-      left_theatre = as_hms(left_theatre),
+      patient_called_dt = to_ymd_hms(surgery_start_date, patient_called, patient_called),
+      arrival_dt = to_ymd_hms(surgery_start_date, arrival, patient_called),
+      into_th_or_ar_dt = to_ymd_hms(surgery_start_date, into_th_or_ar, patient_called),
+      anaesthetic_start_dt = to_ymd_hms(surgery_start_date, anaesthetic_start, patient_called),
+      surgery_start_dt = to_ymd_hms(surgery_start_date, surgery_start, patient_called),
+      surgery_finish_dt = to_ymd_hms(surgery_start_date, surgery_finish, patient_called),
+      anaesthetic_finish_dt = to_ymd_hms(surgery_start_date, anaesthetic_finish, patient_called),
+      left_theatre_dt = to_ymd_hms(surgery_start_date, left_theatre, patient_called),
       bay = as.factor(bay),
-      ward_called = as_hms(ward_called),
-      out_of_recov = as_hms(out_of_recov),
+      ward_called_dt = to_ymd_hms(surgery_start_date, ward_called, patient_called),
+      out_of_recov_dt = to_ymd_hms(surgery_start_date, out_of_recov, patient_called),
+      surgery_start_date = as.Date(surgery_start_date),
       surgery_end_date = as.Date(surgery_end_date)
+    ) |> 
+    select(
+      "theatre",
+      "case_type",
+      "specialty",
+      "surgery_status",
+      "surgery_start_date",
+      "patient_called_dt",
+      "arrival_dt",
+      "into_th_or_ar_dt",
+      "anaesthetic_start_dt",
+      "surgery_start_dt",
+      "surgery_finish_dt",
+      "anaesthetic_finish_dt",
+      "left_theatre_dt",
+      "bay",
+      "ward_called_dt",
+      "out_of_recov_dt",
+      "surgery_end_date"
+    ) |> 
+    rename(
+      patient_called = "patient_called_dt",
+      arrival = "arrival_dt",
+      into_th_or_ar = "into_th_or_ar_dt",
+      anaesthetic_start = "anaesthetic_start_dt",
+      surgery_start = "surgery_start_dt",
+      surgery_finish = "surgery_finish_dt",
+      anaesthetic_finish = "anaesthetic_finish_dt",
+      left_theatre = "left_theatre_dt",
+      ward_called = "ward_called_dt",
+      out_of_recov = "out_of_recov_dt"
     )
+  
+  current_bay_levels <- levels(data_entry$bay)
+  new_bay_levels <- current_bay_levels[
+    order( nchar(current_bay_levels) )
+  ]
+  
+  data_entry <- data_entry |> 
+    mutate(
+      bay = factor(bay, levels=new_bay_levels)
+    )
+  
+  return(data_entry)
   
 }
 
@@ -226,9 +266,27 @@ get_data <- function(file){
 }
 
 
-# tmm_01 <- "src/data/raw/2024-08-09/2023-12-09_tmm-charts-example.xls"
-# tmm_02 <- "src/data/raw/2024-08-09/Annonmysed_37-40_v2_8_anon.xls"
-# tmm_03 <- "src/data/raw/2024-08-09/Annonmysed_41-44_v2_8_anon.xls"
-# tmm_04 <- "src/data/raw/2024-08-09/Annonmysed_49-52_v2_8_anon.xls"
+# data <- get_data("~/src/data/raw/2024-05-09/Annonmysed_37-40_v2_8_anon.xls")
 # 
-# View(get_recovery_adhocs(tmm_01))
+# saveRDS(data, "~/src/data/clean/2024-05-21/Annonmysed_37-40_v2_8_anon.rds")
+
+files <- c(
+  # "2023-12-09_tmm-charts-example",
+  "Annonmysed_37-40_v2_8_anon"
+  # "Annonmysed_41-44_v2_8_anon",
+  # "Annonmysed_49-52_v2_8_anon"
+);
+
+raw_data_path <- "~/src/data/raw/2024-05-09";
+clean_data_path <- "~/src/data/clean/2024-05-21";
+
+for (file in files) {
+  raw_file <- glue("{raw_data_path}/{file}.xls");
+  save_to_file <- glue("{clean_data_path}/{file}.rds");
+
+  # View(get_data(raw_file))
+  
+  data <- get_data(raw_file)
+  saveRDS(data, save_to_file)
+}
+

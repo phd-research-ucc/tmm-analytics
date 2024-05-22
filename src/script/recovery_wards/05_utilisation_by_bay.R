@@ -16,7 +16,8 @@
 # Setup the Script -------------------------------------------------------------
 
 library(ggplot2)
-
+library(hms)
+library(lubridate)
 
 
 
@@ -24,49 +25,98 @@ library(ggplot2)
 
 calc_difftime <- function(time_finish, time_start){
   
-  minutes = as.numeric(
-    make_difftime(
-      time_finish - time_start,
-      units = "minutes"
-    )
-  );
+  minutes = as.numeric(time_finish - time_start) %/% 6 / 10;
   
   
   case_when(
     minutes < 0 ~ 0,
-    TRUE ~ round(minutes)
+    .default = minutes
   )
 }
 
-get_cases_by_bay_pl <- function(data_entry) {
+# get_cases_by_bay_pl <- function(data_entry) {
+#   
+#   current_bay_levels <- levels(data_entry$bay)
+#   new_bay_levels <- current_bay_levels[
+#     order( nchar(current_bay_levels) )
+#   ]
+#   # print(new_bay_levels)
+#   
+#   plot_data <- data_entry |> 
+#     group_by(bay) |> 
+#     summarise(cases = n()) |> 
+#     select(bay, cases) |> 
+#     mutate(
+#       bay = factor(bay, levels=new_bay_levels)
+#     )
+#   
+#   # View(plot_data)
+#   
+#   
+#   plot <- ggplot(
+#       plot_data, 
+#       aes(x = bay, y = cases)
+#     ) + 
+#     geom_bar(stat = "identity")
+#   
+#   print(plot)
+#   
+#   return(plot)
+# }
+
+
+get_utilisation_by_bay_df <- function(file) {
+  df <- readRDS(file)
   
-  current_bay_levels <- levels(data_entry$bay)
-  new_bay_levels <- current_bay_levels[
-    order( nchar(current_bay_levels) )
-  ]
-  # print(new_bay_levels)
-  
-  plot_data <- data_entry |> 
-    group_by(bay) |> 
-    summarise(cases = n()) |> 
-    select(bay, cases) |> 
+  plot_data <- df$data_entry |>
     mutate(
-      bay = factor(bay, levels=new_bay_levels)
+      bay_open = as_hms("09:00:00"),
+      bay_closed = as_hms("21:00:00"),
+      is_out_of_core_case = ifelse(
+        out_of_recov <= bay_open | bay_closed <= ward_called,
+        TRUE,
+        FALSE
+      ),
+      recovery_time = calc_difftime(out_of_recov, ward_called),
+      earlystart_recovery_time = case_when(
+        is_out_of_core_case ~ 0,
+        .default = calc_difftime(bay_open, ward_called)
+      ),
+      overrun_recovery_time = case_when(
+        is_out_of_core_case ~ 0,
+        .default = calc_difftime(out_of_recov, bay_closed)
+      ),
+      noncore_recovery_time =  earlystart_recovery_time + overrun_recovery_time,
+      incore_recovery_time = case_when(
+        is_out_of_core_case ~ 0,
+        .default = recovery_time - noncore_recovery_time
+      )
+    ) |> 
+    group_by(surgery_start_date, bay) |> 
+    summarise(
+      incore = sum(incore_recovery_time),
+      noncore = sum(noncore_recovery_time),
+      total = sum(recovery_time)
+    ) |> 
+    mutate(
+      core = calc_difftime(as_hms("21:00:00"), as_hms("09:00:00"))
+    ) |> 
+    group_by(bay) |> 
+    summarise(
+      incore_utilisation = sum(incore) / sum(core),
+      noncore_utilisation = sum(noncore) / sum(core),
+      total_utilisation = sum(total) / sum(core)
     )
   
-  # View(plot_data)
+  return(plot_data)
   
-  
-  plot <- ggplot(
-      plot_data, 
-      aes(x = bay, y = cases)
-    ) + 
-    geom_bar(stat = "identity")
-  
-  print(plot)
-  
-  return(plot)
 }
+
+
+saveRDS(
+  get_utilisation_by_bay_df("~/src/data/clean/2024-05-21/Annonmysed_37-40_v2_8_anon.rds"),
+  file = "~/src/data/final/2024-05-21/recovery/utilisation_by_bay_37-40_v2_8.rds"
+)
 
 
 get_utilisation_by_bay_pl <- function(df) {

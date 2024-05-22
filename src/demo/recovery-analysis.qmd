@@ -7,23 +7,18 @@ editor: visual
 
 ## Recovery Bay Summary
 
+::: {style="font-size: 1rem;"}
+Total Number of Hours for All Recovery Bays in a Hospital from 37^th^ to 40^th^ weeks
+:::
+
 ```{r}
-library(ggplot2)
 library(plotly)
 
-data <- data.frame(
-  Category = c("A", "B", "C", "D"),
-  Value = c(10, 23, 15, 8)
-)
+source("~/src/script/recovery_wards/04_durations_by_bay.R")
 
-p <- ggplot(data, aes(x = Category, y = Value)) +
-  geom_bar(stat = "identity") +
-  theme_minimal() +
-  labs(title = "Simple Bar Chart",
-       x = "Category",
-       y = "Value")
+pl <- get_duration_pl("~/src/data/final/2024-05-21/recovery/durations_37-40_v2_8.rds")
 
-ggplotly(p)
+ggplotly(pl)
 ```
 
 ## Bullets
